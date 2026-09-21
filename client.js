@@ -1411,16 +1411,50 @@ window.__ModuleLoader__.load({
         return parts.join('|')
       }
 
+      // 标记层是 body 级 fixed 图层（z-index 900/940），会话顶栏是文档流里的普通元素，
+      // 因此被批注的原文一旦滚到顶栏之下，高亮矩形仍按视口坐标绘制、直接压在顶栏上（#62）。
+      // 修法与 #50 的输入框挖洞同源：再挖掉「会话列内、滚动容器上沿之上」的那条横带。
+      // 只挖会话列（scrollBody 的 left/right）而不是整幅宽度，否则会把侧边栏文件预览
+      // 的批注一并裁掉（#57 的侧边栏批注与顶栏横带在 x 轴上重叠）。
+      function markerViewport() {
+        var view = document.querySelector('[data-conversation-scroll]')
+        var r = view !== null ? view.getBoundingClientRect() : null
+        return r !== null && r.width > 0 && r.top > 0 ? r : null
+      }
+
+      function markerClipPath(view, composer) {
+        var holes = []
+        if (view !== null) holes.push([view.left, 0, view.right, view.top])
+        if (composer !== null && composer.width > 0 && composer.height > 0) {
+          holes.push([composer.left, composer.top, composer.right, composer.bottom])
+        }
+        if (holes.length === 0) return 'none'
+        var parts = ['polygon(evenodd, 0 0, 100% 0, 100% 100%, 0 100%, 0 0']
+        for (var i = 0; i < holes.length; i++) {
+          var h = holes[i]
+          parts.push(
+            h[0] + 'px ' + h[1] + 'px', h[2] + 'px ' + h[1] + 'px',
+            h[2] + 'px ' + h[3] + 'px', h[0] + 'px ' + h[3] + 'px',
+            h[0] + 'px ' + h[1] + 'px',
+          )
+        }
+        return parts.join(', ') + ')'
+      }
+
+      // 编号胶囊同样要给顶栏让位：挖洞会把落在横带里的胶囊整块裁掉，
+      // 所以 chipTop 的下限从「视口上沿 4px」抬到「滚动容器上沿 + 4px」。
+      function markerChipFloor() {
+        var view = markerViewport()
+        return view !== null ? Math.round(view.top) + 4 : 4
+      }
+
       function renderMarkers() {
-        // 对整个标记层挖去输入框区域；滚动、尺寸变化时即使原文没动也要刷新。
+        // 对整个标记层挖去顶栏横带与输入框区域；滚动、尺寸变化时即使原文没动也要刷新。
         var composer = document.querySelector('[data-composer-card]')
-        var r = composer !== null ? composer.getBoundingClientRect() : null
-        overlay.style.clipPath = r !== null && r.width > 0 && r.height > 0
-          ? 'polygon(evenodd, 0 0, 100% 0, 100% 100%, 0 100%, 0 0, '
-            + r.left + 'px ' + r.top + 'px, ' + r.right + 'px ' + r.top + 'px, '
-            + r.right + 'px ' + r.bottom + 'px, ' + r.left + 'px ' + r.bottom + 'px, '
-            + r.left + 'px ' + r.top + 'px)'
-          : 'none'
+        overlay.style.clipPath = markerClipPath(
+          markerViewport(),
+          composer !== null ? composer.getBoundingClientRect() : null,
+        )
         var sig = markersSignature()
         if (sig !== markersSig) {
           markersSig = sig
@@ -1459,9 +1493,10 @@ window.__ModuleLoader__.load({
             var chip = document.createElement('div')
             chip.className = 'dsh-ann-num'
             chip.textContent = String(i + 1)
+            var chipFloor = markerChipFloor()
             var chipTop = anchor.top - 20
-            if (chipTop < 4) chipTop = Math.min(anchor.top + 2, window.innerHeight - 22)
-            if (chipTop < 4) chipTop = 4
+            if (chipTop < chipFloor) chipTop = Math.min(anchor.top + 2, window.innerHeight - 22)
+            if (chipTop < chipFloor) chipTop = chipFloor
             var chipLeft = Math.max(4, Math.min(anchor.left - 4, window.innerWidth - 24))
             var tries = 0
             while (tries < 12) {
