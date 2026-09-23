@@ -1712,7 +1712,7 @@ window.__ModuleLoader__.load({
         render()
         renderMarkers()
         // 面板正在显示时同步重建：否则删掉的条目还留在面板里，必须重新 hover 才消失。
-        if (tipLayer.childNodes.length > 0) showChipTip()
+        if (tipOwner === chipLayer) showChipTip()
       }
 
       function closeToolbar() {
@@ -1734,6 +1734,21 @@ window.__ModuleLoader__.load({
       var tipLayer = document.createElement('div')
       tipLayer.setAttribute('data-annotation-tip-layer', '')
       document.body.appendChild(tipLayer)
+      // tipLayer 是三类悬浮面板（输入框胶囊 / 气泡标签 / 回复芯片）共享的单例容器。
+      // 记录当前面板的归属元素：任何清空都必须指名归属，无归属清空会误杀用户
+      // 正在观看的面板——宿主 layout mutation 会高频触发 updateChip，面板刚显示
+      // 就被抹掉（表现为「芯片显示内容后直接消失」）。
+      var tipOwner = null
+      function clearTip(owner) {
+        if (owner !== undefined && tipOwner !== owner) return
+        tipLayer.textContent = ''
+        tipOwner = null
+      }
+      function presentTip(owner, el) {
+        tipLayer.textContent = ''
+        tipLayer.appendChild(el)
+        tipOwner = owner
+      }
       var observedComposer = null
       var composerObserver = typeof ResizeObserver === 'function'
         ? new ResizeObserver(onLayoutChange)
@@ -1742,7 +1757,7 @@ window.__ModuleLoader__.load({
       function updateChip() {
         if (ui.quotes.length === 0) {
           chipLayer.style.display = 'none'
-          tipLayer.textContent = ''
+          clearTip(chipLayer)
           return
         }
         chipLayer.textContent = ''
@@ -1778,7 +1793,7 @@ window.__ModuleLoader__.load({
         if (hoverGrace !== null) clearTimeout(hoverGrace)
         hoverGrace = setTimeout(function () {
           hoverGrace = null
-          tipLayer.textContent = ''
+          clearTip(chipLayer)
         }, 250)
       }
       function cancelHide() {
@@ -1791,7 +1806,6 @@ window.__ModuleLoader__.load({
 
       function showChipTip() {
         if (ui.quotes.length === 0) return
-        tipLayer.textContent = ''
         var el = document.createElement('div')
         el.className = 'dsh-ann-tip'
         el.style.cssText = 'position:fixed;z-index:1160;width:300px;max-width:calc(100vw - 16px);padding:10px 12px;border-radius:12px;border:1px solid var(--dsw-alias-border-inverted);background:var(--dsw-specific-menu,#2c2c2e);box-shadow:var(--dsw-shadow-lv3);font-family:var(--dsw-font-family,system-ui);font-size:12px;color:var(--dsw-alias-label-primary);'
@@ -1830,7 +1844,7 @@ window.__ModuleLoader__.load({
           item.appendChild(del)
           el.appendChild(item)
         }
-        tipLayer.appendChild(el)
+        presentTip(chipLayer, el)
         var r2 = chipLayer.getBoundingClientRect()
         var w2 = 300
         var h2 = el.offsetHeight || 120
@@ -1869,7 +1883,7 @@ window.__ModuleLoader__.load({
               ui.quotes = []
               annotationAttached = false
               writeCurrentPendingQuotes()
-              tipLayer.textContent = ''
+              clearTip(chipLayer)
               updateChip()
               renderMarkers()
               pendingDeco.push({ items: sentItems })
@@ -2001,7 +2015,6 @@ window.__ModuleLoader__.load({
         tag.style.cssText = 'display:inline-flex;align-items:center;height:18px;padding:0 8px;margin:4px 0 0 4px;border-radius:9px;border:1px solid var(--dsw-alias-border-inverted);background:var(--dsw-specific-menu,#2c2c2e);color:var(--dsw-alias-label-secondary);font-family:var(--dsw-font-family,system-ui);font-size:10px;cursor:default;'
         ;(function (list) {
           tag.addEventListener('mouseenter', function () {
-            tipLayer.textContent = ''
             var el = document.createElement('div')
             el.className = 'dsh-ann-tip'
             el.style.cssText = 'position:fixed;z-index:1160;width:300px;max-width:calc(100vw - 16px);padding:10px 12px;border-radius:12px;border:1px solid var(--dsw-alias-border-inverted);background:var(--dsw-specific-menu,#2c2c2e);box-shadow:var(--dsw-shadow-lv3);font-family:var(--dsw-font-family,system-ui);font-size:12px;color:var(--dsw-alias-label-primary);'
@@ -2028,7 +2041,7 @@ window.__ModuleLoader__.load({
               }
               el.appendChild(item)
             }
-            tipLayer.appendChild(el)
+            presentTip(tag, el)
             var r2 = tag.getBoundingClientRect()
             var w2 = 300
             var h2 = el.offsetHeight || 120
@@ -2044,7 +2057,7 @@ window.__ModuleLoader__.load({
             if (bubbleGrace !== null) clearTimeout(bubbleGrace)
             bubbleGrace = setTimeout(function () {
               bubbleGrace = null
-              tipLayer.textContent = ''
+              clearTip(tag)
             }, 250)
           }
           function bubbleKeep() {
@@ -2175,13 +2188,12 @@ window.__ModuleLoader__.load({
         var grace = null
         function hide() {
           if (grace !== null) clearTimeout(grace)
-          grace = setTimeout(function () { grace = null; tipLayer.textContent = '' }, 250)
+          grace = setTimeout(function () { grace = null; clearTip(chip) }, 250)
         }
         function keep() {
           if (grace !== null) { clearTimeout(grace); grace = null }
         }
         chip.addEventListener('mouseenter', function () {
-          tipLayer.textContent = ''
           var el = document.createElement('div')
           el.className = 'dsh-ann-tip'
           el.style.cssText = 'position:fixed;z-index:1160;width:320px;max-width:calc(100vw - 16px);padding:10px 12px;border-radius:12px;border:1px solid var(--dsw-alias-border-inverted);background:var(--dsw-specific-menu,#2c2c2e);box-shadow:var(--dsw-shadow-lv3);font-family:var(--dsw-font-family,system-ui);font-size:12px;color:var(--dsw-alias-label-primary);'
@@ -2206,7 +2218,7 @@ window.__ModuleLoader__.load({
             none.textContent = t('reply.missing')
             el.appendChild(none)
           }
-          tipLayer.appendChild(el)
+          presentTip(chip, el)
           var r2 = chip.getBoundingClientRect()
           var w2 = 320
           var h2 = el.offsetHeight || 100
@@ -2278,7 +2290,7 @@ window.__ModuleLoader__.load({
         if (ui.mode !== 'closed') render()
         updateChip()
         // 打开的悬浮面板按新语言关闭（下次 hover 以新语言重建）。
-        tipLayer.textContent = ''
+        clearTip()
         var tags = document.querySelectorAll('[data-annotation-bubble-tag]')
         for (var i = 0; i < tags.length; i++) {
           var items = tags[i].__annotationItems
@@ -2306,7 +2318,7 @@ window.__ModuleLoader__.load({
         // 旧会话那条消息回切后会由气泡反解析路径重新装饰。
         pendingDeco.length = 0
         ui.noteDraft = ''
-        tipLayer.textContent = ''
+        clearTip()
         updateChip()
         watchInputDraft()
         renderMarkers()
