@@ -1734,6 +1734,23 @@ window.__ModuleLoader__.load({
       var tipLayer = document.createElement('div')
       tipLayer.setAttribute('data-annotation-tip-layer', '')
       document.body.appendChild(tipLayer)
+      // 共享容器的监听器只注册一次（见下方 sharedTipMouseEnter / sharedTipMouseLeave）。
+      // tipLayer 是长期存活的 body 级单例，而气泡标签与回复芯片会被反复重建：原先
+      // 每个面板在 mouseenter 里都往它追加一对监听器，却从不移除，于是每重建一代
+      // 就净增两个闭包（持有已废弃的 grace 定时器与被移出 DOM 的触发元素）。
+      // 这里改为两处固定监听器 + 一个「当前面板的关闭钩子」指针，由面板在 mouseenter
+      // 时登记，关闭或关闭被取消后清空。
+      var tipActiveHide = null
+      function sharedTipMouseEnter() {
+        if (tipActiveHide === null) return
+        tipActiveHide.keep()
+      }
+      function sharedTipMouseLeave() {
+        if (tipActiveHide === null) return
+        tipActiveHide.hide()
+      }
+      tipLayer.addEventListener('mouseenter', sharedTipMouseEnter)
+      tipLayer.addEventListener('mouseleave', sharedTipMouseLeave)
       var observedComposer = null
       var composerObserver = typeof ResizeObserver === 'function'
         ? new ResizeObserver(onLayoutChange)
@@ -1778,16 +1795,23 @@ window.__ModuleLoader__.load({
         if (hoverGrace !== null) clearTimeout(hoverGrace)
         hoverGrace = setTimeout(function () {
           hoverGrace = null
+          releaseActiveTip()
           tipLayer.textContent = ''
         }, 250)
       }
       function cancelHide() {
         if (hoverGrace !== null) { clearTimeout(hoverGrace); hoverGrace = null }
       }
-      chipLayer.addEventListener('mouseenter', function () { cancelHide(); showChipTip() })
+      /** 面板已真正关闭时解除登记：此后共享容器上的 mouseenter/leave 不再有对象可派发。 */
+      function releaseActiveTip() {
+        tipActiveHide = null
+      }
+      chipLayer.addEventListener('mouseenter', function () {
+        cancelHide()
+        showChipTip()
+        tipActiveHide = { keep: cancelHide, hide: scheduleHide }
+      })
       chipLayer.addEventListener('mouseleave', scheduleHide)
-      tipLayer.addEventListener('mouseenter', cancelHide)
-      tipLayer.addEventListener('mouseleave', scheduleHide)
 
       function showChipTip() {
         if (ui.quotes.length === 0) return
@@ -2002,6 +2026,7 @@ window.__ModuleLoader__.load({
         ;(function (list) {
           tag.addEventListener('mouseenter', function () {
             tipLayer.textContent = ''
+            tipActiveHide = { keep: bubbleKeep, hide: bubbleHide }
             var el = document.createElement('div')
             el.className = 'dsh-ann-tip'
             el.style.cssText = 'position:fixed;z-index:1160;width:300px;max-width:calc(100vw - 16px);padding:10px 12px;border-radius:12px;border:1px solid var(--dsw-alias-border-inverted);background:var(--dsw-specific-menu,#2c2c2e);box-shadow:var(--dsw-shadow-lv3);font-family:var(--dsw-font-family,system-ui);font-size:12px;color:var(--dsw-alias-label-primary);'
@@ -2044,15 +2069,15 @@ window.__ModuleLoader__.load({
             if (bubbleGrace !== null) clearTimeout(bubbleGrace)
             bubbleGrace = setTimeout(function () {
               bubbleGrace = null
+              releaseActiveTip()
               tipLayer.textContent = ''
             }, 250)
           }
           function bubbleKeep() {
             if (bubbleGrace !== null) { clearTimeout(bubbleGrace); bubbleGrace = null }
           }
+          // 只登记关闭钩子，不再往共享 tipLayer 上追加监听器（见 tipActiveHide 注释）
           tag.addEventListener('mouseleave', bubbleHide)
-          tipLayer.addEventListener('mouseenter', bubbleKeep)
-          tipLayer.addEventListener('mouseleave', bubbleHide)
         })(items)
         tag.__annotationItems = items
         bubble.appendChild(tag)
@@ -2175,13 +2200,14 @@ window.__ModuleLoader__.load({
         var grace = null
         function hide() {
           if (grace !== null) clearTimeout(grace)
-          grace = setTimeout(function () { grace = null; tipLayer.textContent = '' }, 250)
+          grace = setTimeout(function () { grace = null; releaseActiveTip(); tipLayer.textContent = '' }, 250)
         }
         function keep() {
           if (grace !== null) { clearTimeout(grace); grace = null }
         }
         chip.addEventListener('mouseenter', function () {
           tipLayer.textContent = ''
+          tipActiveHide = { keep: keep, hide: hide }
           var el = document.createElement('div')
           el.className = 'dsh-ann-tip'
           el.style.cssText = 'position:fixed;z-index:1160;width:320px;max-width:calc(100vw - 16px);padding:10px 12px;border-radius:12px;border:1px solid var(--dsw-alias-border-inverted);background:var(--dsw-specific-menu,#2c2c2e);box-shadow:var(--dsw-shadow-lv3);font-family:var(--dsw-font-family,system-ui);font-size:12px;color:var(--dsw-alias-label-primary);'
@@ -2218,8 +2244,6 @@ window.__ModuleLoader__.load({
           el.style.width = w2 + 'px'
         })
         chip.addEventListener('mouseleave', hide)
-        tipLayer.addEventListener('mouseenter', keep)
-        tipLayer.addEventListener('mouseleave', hide)
         return chip
       }
 
