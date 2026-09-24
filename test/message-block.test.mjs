@@ -9,24 +9,28 @@ function fn(name) {
   assert.ok(match, name)
   return match[0]
 }
-function harness(lang, draft, sourcePath) {
+function harness(lang, draft, sourcePath, sessionsOverride) {
   const nodes = []
   const bubble = { querySelectorAll: () => [], get textContent() { return nodes.map(n => n.nodeValue).join('') } }
   const row = { querySelector: () => bubble }
   const shell = { state: { getSnapshot: () => ({ draft }) }, setDraft(value) { draft = value } }
   const document = { createTreeWalker: () => { let i = 0; return { nextNode: () => nodes[i++] ?? null } } }
-  const api = Function('shell', 'document', 'NodeFilter', 'sourcePath', `
+  const sessions = sessionsOverride ?? {
+    list: { getSnapshot: () => ({ current: 'session' }) },
+    currentProvideInfo: { getSnapshot: () => ({ sessionId: 'session' }), subscribe: () => () => {} },
+    scope: () => ({}),
+  }
+  const api = Function('shell', 'document', 'NodeFilter', 'sourcePath', 'sessions', `
     ${protocol}
     ${source.slice(source.indexOf('    function quoteWithSource('), source.indexOf('    function assistantRows('))}
     var ui = { quotes: [{ text: '原文包含提问：这个词', note: '解释一下' }] }
     ui.quotes[0].sourcePath = sourcePath
     var annotationAttached = false
-    var sessions = { list: { getSnapshot: () => ({ current: 'session' }) }, scope: () => ({}) }
     var ctx = { conversation: { input: { for: () => shell } } }
     function showToast() {}
-    ${['buildBlock', 'shouldAttachForEnter', 'isCommandDraft', 'attachAndSend', 'hideAnnotationBlock', 'parseItemsFromBubble'].map(fn).join('\n')}
+    ${['currentSessionId', 'buildBlock', 'shouldAttachForEnter', 'isCommandDraft', 'attachAndSend', 'hideAnnotationBlock', 'parseItemsFromBubble'].map(fn).join('\n')}
     return { setLang, attachAndSend, hideAnnotationBlock, parseItemsFromBubble }
-  `)(shell, document, { SHOW_TEXT: 4 }, sourcePath)
+  `)(shell, document, { SHOW_TEXT: 4 }, sourcePath, sessions)
   api.setLang(lang)
   return { api, row, bubble, shell, render(value) {
     nodes.length = 0
@@ -76,5 +80,30 @@ for (const lang of ['zh', 'en']) {
     h.render(sent)
     assert.equal(h.api.parseItemsFromBubble(h.row)[0].text, '[文档/结果 #1.md]\n原文包含提问：这个词')
     assert.equal(h.api.hideAnnotationBlock(h.row), true)
+  })
+}
+
+// issue #64：DSH 0.1.6-alpha.2 移除了 sessions.list.current，插件须经
+// currentProvideInfo 取到当前会话（list 快照无 current 的真实新内核形状）。
+for (const lang of ['zh', 'en']) {
+  test(`${lang}: 新内核形状（list 无 current）下批注仍随消息发送（issue #64）`, () => {
+    const newKernelSessions = {
+      list: { getSnapshot: () => ({ ids: ['session-a'], byId: {}, phase: 'ready' }) },
+      currentProvideInfo: { getSnapshot: () => ({ sessionId: 'session-a' }), subscribe: () => () => {} },
+      scope: (id) => (id === 'session-a' ? {} : undefined),
+    }
+    const h = harness(lang, '我的问题', undefined, newKernelSessions)
+    assert.equal(h.api.attachAndSend({}), true)
+    assert.match(h.shell.state.getSnapshot().draft, /Annotation/)
+  })
+
+  test(`${lang}: 旧内核形状（仅 list.current）下保持兼容`, () => {
+    const legacySessions = {
+      list: { getSnapshot: () => ({ current: 'session' }) },
+      scope: () => ({}),
+    }
+    const h = harness(lang, '', undefined, legacySessions)
+    assert.equal(h.api.attachAndSend({}), true)
+    assert.match(h.shell.state.getSnapshot().draft, /Annotation/)
   })
 }
