@@ -2,7 +2,9 @@
 //
 // 手写 CJS + ModuleLoader 包装（同 omdsh-dev navbar/greeter 模式，零构建
 // 步骤）：纯 DOM 自渲染，无任何 @deepseek-ai 值导入（bundle purity gate 合规）；
-// cordis 服务经 exports.inject 的字符串名接入（sessions / conversation / locale）。
+// cordis 服务经 exports.inject 的字符串名接入（sessions / conversation /
+// locale / uiSession——uiSession 用于读取「当前会话 id」：DSH 0.1.7 起
+// sessions.list 快照不再带 current，见 apply 内的 readCurrentSessionId）。
 //
 // v1.4.x · 自包含批注流（取代 v0.9 chip 设计与 v1.0 发送面板）：
 //   1. 选中助手文字 → 工具条「批注」→ 写批注（可留空 = 仅标记原文）
@@ -97,6 +99,7 @@ window.__ModuleLoader__.load({
         '  margin-bottom: 8px; cursor: move; touch-action: none; user-select: none; }',
         '.dsh-ann-card-title { font-size: 13px; font-weight: 600;',
         '  color: var(--dsw-alias-label-primary); }',
+        '.dsh-ann-card-headmain { display: flex; align-items: center; gap: 2px; min-width: 0; }',
         '.dsh-ann-quote { font-size: 12px; line-height: 1.55;',
         '  color: var(--dsw-alias-label-tertiary);',
         '  border-left: 2px solid var(--dsw-alias-border-inverted);',
@@ -135,11 +138,6 @@ window.__ModuleLoader__.load({
         '.dsh-ann-input:focus { border-color: var(--dsw-alias-text-accent, #4c9aff); }',
         '.dsh-ann-input::placeholder { color: var(--dsw-alias-label-dimmed); }',
         '.dsh-ann-row { display: flex; gap: 8px; margin-top: 10px; justify-content: flex-end; }',
-        '.dsh-ann-cancel { display: inline-flex; align-items: center; height: 28px; padding: 0 12px;',
-        '  border: 1px solid var(--dsw-alias-border-l2); border-radius: 14px;',
-        '  background: transparent; color: var(--dsw-alias-label-primary);',
-        '  font-family: inherit; font-size: 12px; cursor: pointer; }',
-        '.dsh-ann-cancel:hover { background: var(--dsw-alias-interactive-bg-hover); }',
         '.dsh-ann-error { color: var(--dsw-alias-state-error-primary, #ff7a7a);',
         '  font-size: 12px; margin-top: 8px; word-break: break-word; }',
         '.dsh-ann-hl { position: fixed; z-index: 900; background: rgba(255, 195, 0, .15);',
@@ -152,7 +150,8 @@ window.__ModuleLoader__.load({
         '  box-shadow: 0 1px 4px rgba(0,0,0,.35); pointer-events: auto; cursor: pointer;',
         '  transition: filter .12s ease; }',
         '.dsh-ann-num:hover { filter: brightness(1.15); }',
-        'body:has([role="dialog"][aria-modal="true"]) [data-annotation-overlay] { display: none; }',
+        'body:has([role="dialog"][aria-modal="true"]) [data-annotation-overlay],',
+        'body:has([role="dialog"][aria-modal="true"]) [data-annotation-num-layer] { display: none; }',
         '.dsh-ann-tip { animation: dsh-ann-pop .12s var(--ds-ease-in-out, ease); }',
         '@keyframes dsh-ann-fadein { from { opacity: 0; } to { opacity: 1; } }',
       ].join('\n')
@@ -176,6 +175,7 @@ window.__ModuleLoader__.load({
           editTitle: '编辑批注',
           placeholder: '写下批注…（可留空，保存后仅标记原文）',
           save: '保存批注',
+          delete: '删除这条批注',
         },
         common: { cancel: '取消' },
         error: { noSelection: '没有选中的内容' },
@@ -213,6 +213,7 @@ window.__ModuleLoader__.load({
           editTitle: 'Edit annotation',
           placeholder: 'Write a note… (optional; saving only marks the passage)',
           save: 'Save annotation',
+          delete: 'Delete this annotation',
         },
         common: { cancel: 'Cancel' },
         error: { noSelection: 'No text selected' },
@@ -904,6 +905,50 @@ window.__ModuleLoader__.load({
     function apply(ctx) {
       var sessions = ctx.sessions
 
+      // ---------- 当前会话 id 的跨版本读取 ----------
+      // DSH 0.1.7 起 `sessions.list` 快照不再暴露 `current`（selection 收进
+      // ClientSessions 私有 selection），改由 ui-session 服务的
+      // `adapter.current`（HostObservable<binding>，binding.key = sessionId）
+      // 发布。旧版两条路都在，故这里以 uiSession 优先、list.current 兜底：
+      // 若只认旧字段，0.1.7+ 上 current 恒为 undefined，attachAndSend 第一行
+      // 就 return false —— 表现为「有批注、标签也在，但回车/发送按钮都没反应」。
+      var uiSessionService = null
+
+      /** ui-session 服务（惰性探测：apply 时机早于它注册时下次再取）。 */
+      function uiSessionFace() {
+        if (uiSessionService === null) {
+          try { uiSessionService = ctx.get('uiSession') || null } catch (_) { uiSessionService = null }
+        }
+        return uiSessionService
+      }
+
+      function currentSessionSource() {
+        try {
+          var face = uiSessionFace()
+          var adapter = face !== null ? face.adapter : undefined
+          var source = adapter !== undefined && adapter !== null ? adapter.current : undefined
+          if (source !== undefined && source !== null
+            && typeof source.getSnapshot === 'function' && typeof source.subscribe === 'function') return source
+        } catch (_) { /* 旧版内核：退回 list store */ }
+        return sessions.list
+      }
+
+      function readCurrentSessionId() {
+        try {
+          var face = uiSessionFace()
+          var adapter = face !== null ? face.adapter : undefined
+          var source = adapter !== undefined && adapter !== null ? adapter.current : undefined
+          if (source !== undefined && source !== null && typeof source.getSnapshot === 'function') {
+            var binding = source.getSnapshot()
+            if (binding !== undefined && binding !== null && binding.key !== undefined) return binding.key
+          }
+        } catch (_) { /* 旧版内核：退回 list store */ }
+        try {
+          var snap = sessions.list.getSnapshot()
+          return snap !== undefined && snap !== null ? snap.current : undefined
+        } catch (_) { return undefined }
+      }
+
       var host = document.createElement('div')
       host.setAttribute('data-annotation-for-dsh', '')
       document.body.appendChild(host)
@@ -911,6 +956,16 @@ window.__ModuleLoader__.load({
       overlay.setAttribute('data-annotation-overlay', '')
       overlay.style.cssText = 'position:fixed;inset:0;pointer-events:none;z-index:900;'
       document.body.appendChild(overlay)
+
+      // 编号单独成层：overlay 是 z-index 900 的 stacking context，编号挂在里面
+      // 只能跟着它走——既会被宿主里层级更高的内容压住，也会被输入框/头部的
+      // 裁剪一起切掉（表现为「滚到输入框上就不显示」）。分层之后编号有自己
+      // 统一的层级（1100，仍低于胶囊/菜单层），不随宿主文档结构变化，也不再
+      // 参与标记层的裁剪。
+      var numLayer = document.createElement('div')
+      numLayer.setAttribute('data-annotation-num-layer', '')
+      numLayer.style.cssText = 'position:fixed;inset:0;pointer-events:none;z-index:1100;'
+      document.body.appendChild(numLayer)
 
       var ui = {
         mode: 'closed',      // closed | actions | editing | composing
@@ -948,7 +1003,7 @@ window.__ModuleLoader__.load({
       }
 
       function writeCurrentPendingQuotes() {
-        writePendingQuotes(sessions.list.getSnapshot().current)
+        writePendingQuotes(readCurrentSessionId())
       }
 
       var ignoreUntil = 0
@@ -1036,12 +1091,13 @@ window.__ModuleLoader__.load({
         var ancEl = anc instanceof Element ? anc : (anc && anc.parentElement)
         if (ancEl !== null && ancEl.closest) {
           if (ancEl.closest('[data-annotation-for-dsh]') || ancEl.closest('[data-annotation-overlay]')
+            || ancEl.closest('[data-annotation-num-layer]')
             || ancEl.closest('[data-composer-card]') || ancEl.closest('[data-input-scroll]')) {
             clearSettle()
             return
           }
         }
-        if (host.contains(anc) || overlay.contains(anc)) {
+        if (host.contains(anc) || overlay.contains(anc) || numLayer.contains(anc)) {
           clearSettle()
           return
         }
@@ -1050,7 +1106,7 @@ window.__ModuleLoader__.load({
         var key = selectionKey(sel)
         var rootEl = annotationRootOf(range.commonAncestorContainer)
         var source = documentSourceOf(range.commonAncestorContainer)
-        if (source !== null && source.sessionId !== sessions.list.getSnapshot().current) rootEl = null
+        if (source !== null && source.sessionId !== readCurrentSessionId()) rootEl = null
         if (rootEl === null) { clearSettle(); closeToolbar(); return }
         if (ui.mode === 'actions' && key === ui.lastKey && text === ui.quote && rootEl === ui.selectionRoot
           && (ui.source && ui.source.sourceUrl) === (source && source.sourceUrl)) { clearSettle(); return }
@@ -1064,7 +1120,7 @@ window.__ModuleLoader__.load({
           if (annotationRootOf(r.commonAncestorContainer) !== rootEl) return
           var currentSource = documentSourceOf(r.commonAncestorContainer)
           if ((currentSource && currentSource.sourceUrl) !== (source && source.sourceUrl)
-            || (source !== null && source.sessionId !== sessions.list.getSnapshot().current)) return
+            || (source !== null && source.sessionId !== readCurrentSessionId())) return
           var rect = r.getBoundingClientRect()
           if (rect.width === 0 || rect.height === 0) return
           var p = placeAbove(rect, 40)
@@ -1157,6 +1213,7 @@ window.__ModuleLoader__.load({
           if (el === null || !el.closest) return true
           if (el.closest('[data-composer-card]') || el.closest('[data-input-scroll]')
             || el.closest('[data-annotation-for-dsh]') || el.closest('[data-annotation-overlay]')
+            || el.closest('[data-annotation-num-layer]')
             || el.closest('[data-annotation-chip]') || el.closest('[data-annotation-tip-layer]')) {
             continue
           }
@@ -1224,7 +1281,7 @@ window.__ModuleLoader__.load({
       document.addEventListener('keydown', onKeyDown, true)
 
       function submitAttached() {
-        var current = sessions.list.getSnapshot().current
+        var current = readCurrentSessionId()
         if (current === undefined) return
         var scoped = sessions.scope(current)
         if (scoped === undefined) return
@@ -1315,10 +1372,28 @@ window.__ModuleLoader__.load({
           var head = document.createElement('div')
           head.className = 'dsh-ann-card-head'
           makeEditorDraggable(head, card)
+          var headMain = document.createElement('div')
+          headMain.className = 'dsh-ann-card-headmain'
           var title = document.createElement('div')
           title.className = 'dsh-ann-card-title'
           title.textContent = ui.editingId !== null ? t('edit.editTitle') : t('edit.addTitle')
-          head.appendChild(title)
+          headMain.appendChild(title)
+          // 编辑已有批注时，标题右侧紧邻一个删除按钮（新增批注没有可删对象）。
+          if (ui.editingId !== null) {
+            var editingId = ui.editingId
+            var del = document.createElement('button')
+            del.type = 'button'
+            del.className = 'dsh-ann-qdel'
+            del.title = t('edit.delete')
+            del.setAttribute('aria-label', t('edit.delete'))
+            del.appendChild(ICONS.trash())
+            del.addEventListener('click', function () {
+              closeToolbar()
+              removeQuote(editingId)
+            })
+            headMain.appendChild(del)
+          }
+          head.appendChild(headMain)
           head.appendChild(iconButton('dsh-ann-icon', ICONS.close, t('common.cancel'), closeToolbar))
           card.appendChild(head)
           var quote = document.createElement('div')
@@ -1338,18 +1413,12 @@ window.__ModuleLoader__.load({
           card.appendChild(ta)
           var row = document.createElement('div')
           row.className = 'dsh-ann-row'
-          var cancel = document.createElement('button')
-          cancel.className = 'dsh-ann-cancel'
-          cancel.type = 'button'
-          cancel.textContent = t('common.cancel')
-          cancel.addEventListener('click', closeToolbar)
           var save = document.createElement('button')
           save.type = 'button'
           save.className = 'dsh-ann-action'
           save.appendChild(ICONS.check())
           save.appendChild(document.createTextNode(t('edit.save')))
           save.addEventListener('click', saveAnnotation)
-          row.appendChild(cancel)
           row.appendChild(save)
           card.appendChild(row)
           if (ui.error !== null) {
@@ -1394,7 +1463,7 @@ window.__ModuleLoader__.load({
 
       // ---------- 批注标记 ----------
       var markersSig = null
-      function markersSignature() {
+      function markersSignature(blockers) {
         var parts = []
         for (var i = 0; i < ui.quotes.length; i++) {
           var q = ui.quotes[i]
@@ -1408,23 +1477,76 @@ window.__ModuleLoader__.load({
           }
           if (rects.length > 0) parts.push(q.id + ':chip')
         }
+        // 遮挡区（输入框 + 会话头部）也进签名：它们改变时编号必须重走
+        // 让位/隐藏，否则旧位置会被裁剪成半截残影。
+        for (var b = 0; b < blockers.length; b++) {
+          var br = blockers[b]
+          parts.push('b:' + Math.round(br.left) + ',' + Math.round(br.top) + ',' + Math.round(br.width) + ',' + Math.round(br.height))
+        }
         return parts.join('|')
       }
 
-      function renderMarkers() {
-        // 对整个标记层挖去输入框区域；滚动、尺寸变化时即使原文没动也要刷新。
-        var composer = document.querySelector('[data-composer-card]')
-        var r = composer !== null ? composer.getBoundingClientRect() : null
-        overlay.style.clipPath = r !== null && r.width > 0 && r.height > 0
-          ? 'polygon(evenodd, 0 0, 100% 0, 100% 100%, 0 100%, 0 0, '
-            + r.left + 'px ' + r.top + 'px, ' + r.right + 'px ' + r.top + 'px, '
+      /** 按 CSS Modules local 名取宿主元素的可见矩形：类名形如 `wSkVaW_header`
+       *  （哈希前缀随版本变），故认「以 _<local> 收尾的 class token」，
+       *  headerActions / composerSeatInner 这类同前缀兄弟名不会被误认。 */
+      function hostLocalRects(local) {
+        var out = []
+        var found = document.querySelectorAll('[class*="_' + local + '"]')
+        var re = new RegExp('(^|\\s)[^\\s]*_' + local + '(\\s|$)')
+        for (var i = 0; i < found.length; i++) {
+          var cls = found[i].getAttribute('class') || ''
+          if (!re.test(cls)) continue
+          var r = found[i].getBoundingClientRect()
+          if (r.width <= 0 || r.height <= 0) continue
+          if (r.bottom <= 0 || r.top >= window.innerHeight) continue
+          out.push(r)
+        }
+        return out
+      }
+
+      /** 会盖住会话内容的宿主头部：标记层是 fixed 定位，原生绘制顺序上恒在
+       *  头部之上——只有把头部区域从标记层裁掉，编号与高亮才会像会话内容
+       *  一样被头部遮住。 */
+      function hostHeaderRects() {
+        return hostLocalRects('header')
+      }
+
+      /** 输入区（整块 composer 容器，含输入卡片与下方统计行）——不是单个
+       *  `[data-composer-card]`：卡片下方那段同样被容器盖住，编号落在那里
+       *  会像「显示在对话区下面」。找不到容器时退回输入卡片。 */
+      function hostComposerRects() {
+        var rects = hostLocalRects('composerSeat')
+        if (rects.length > 0) return rects
+        var card = document.querySelector('[data-composer-card]')
+        if (card === null) return []
+        var r = card.getBoundingClientRect()
+        return r.width > 0 && r.height > 0 ? [r] : []
+      }
+
+      /** 外框保留、逐个矩形挖空（evenodd）：标记层的裁剪路径。 */
+      function clipWithHoles(rects) {
+        var d = 'polygon(evenodd, 0 0, 100% 0, 100% 100%, 0 100%, 0 0'
+        for (var i = 0; i < rects.length; i++) {
+          var r = rects[i]
+          d += ', ' + r.left + 'px ' + r.top + 'px, ' + r.right + 'px ' + r.top + 'px, '
             + r.right + 'px ' + r.bottom + 'px, ' + r.left + 'px ' + r.bottom + 'px, '
-            + r.left + 'px ' + r.top + 'px)'
-          : 'none'
-        var sig = markersSignature()
+            + r.left + 'px ' + r.top + 'px'
+        }
+        return d + ')'
+      }
+
+      function renderMarkers() {
+        // 对整个标记层挖去输入区与会话头部区域；滚动、尺寸变化时即使原文没动也要刷新。
+        var holes = hostComposerRects().concat(hostHeaderRects())
+        overlay.style.clipPath = holes.length > 0 ? clipWithHoles(holes) : 'none'
+        // 编号层用同一条裁剪路径兜底：编号只允许出现在会话内容可视区里，
+        // 绝不压在输入框或会话头部之上（定位逻辑已先让位/隐藏，这里是保险）。
+        numLayer.style.clipPath = overlay.style.clipPath
+        var sig = markersSignature(holes)
         if (sig !== markersSig) {
           markersSig = sig
           overlay.textContent = ''
+          numLayer.textContent = ''
           buildMarkers()
         }
       }
@@ -1456,38 +1578,59 @@ window.__ModuleLoader__.load({
           }
           if (anchor === null && rects.length > 0 && rects[0].width > 0) anchor = rects[0]
           if (anchor !== null) {
-            var chip = document.createElement('div')
-            chip.className = 'dsh-ann-num'
-            chip.textContent = String(i + 1)
             var chipTop = anchor.top - 20
             if (chipTop < 4) chipTop = Math.min(anchor.top + 2, window.innerHeight - 22)
             if (chipTop < 4) chipTop = 4
             var chipLeft = Math.max(4, Math.min(anchor.left - 4, window.innerWidth - 24))
-            var tries = 0
-            while (tries < 12) {
-              var clash = false
-              for (var p = 0; p < placed.length; p++) {
-                var bp = placed[p]
-                if (Math.abs(bp.left - chipLeft) < 18 && Math.abs(bp.top - chipTop) < 18) {
-                  clash = true
-                  break
-                }
-              }
-              if (!clash) break
-              chipLeft += 18
-              if (chipLeft > window.innerWidth - 24) { chipLeft = 4; chipTop += 18 }
-              tries++
+            // 编号只允许出现在「会话正文实际看得见」的地方：跟正文一样，滚出
+            // 内容可视区就消失，绝不贴边钉住（钉住会浮在输入框上/下面的空处）。
+            // 两条判据：① 落在正文滚动容器里；② 不与宿主遮挡 UI（会话头部、
+            // 整块输入区）相交。任一不满足就整条不渲染——不渲染也就不会出现
+            // 被裁掉半截的"阴影残影"。
+            var skipChip = false
+            var views = hostLocalRects('scrollBody')
+            for (var vc = 0; vc < views.length; vc++) {
+              var vr = views[vc]
+              if (chipLeft + 26 <= vr.left || chipLeft >= vr.right) continue
+              if (chipTop < vr.top || chipTop + 18 > vr.bottom) skipChip = true
+              break
             }
-            placed.push({ left: chipLeft, top: chipTop })
-            chip.style.left = chipLeft + 'px'
-            chip.style.top = chipTop + 'px'
-            ;(function (q) {
-              chip.addEventListener('click', function (ev) {
-                ev.stopPropagation()
-                openEditorFor(q)
-              })
-            })(q)
-            overlay.appendChild(chip)
+            var blockers = hostHeaderRects().concat(hostComposerRects())
+            for (var bc = 0; bc < blockers.length && !skipChip; bc++) {
+              var bk = blockers[bc]
+              if (chipLeft + 26 <= bk.left || chipLeft >= bk.right) continue
+              if (chipTop + 18 > bk.top && chipTop < bk.bottom) skipChip = true
+            }
+            if (!skipChip) {
+              var chip = document.createElement('div')
+              chip.className = 'dsh-ann-num'
+              chip.textContent = String(i + 1)
+              var tries = 0
+              while (tries < 12) {
+                var clash = false
+                for (var p = 0; p < placed.length; p++) {
+                  var bp = placed[p]
+                  if (Math.abs(bp.left - chipLeft) < 18 && Math.abs(bp.top - chipTop) < 18) {
+                    clash = true
+                    break
+                  }
+                }
+                if (!clash) break
+                chipLeft += 18
+                if (chipLeft > window.innerWidth - 24) { chipLeft = 4; chipTop += 18 }
+                tries++
+              }
+              placed.push({ left: chipLeft, top: chipTop })
+              chip.style.left = chipLeft + 'px'
+              chip.style.top = chipTop + 'px'
+              ;(function (q) {
+                chip.addEventListener('click', function (ev) {
+                  ev.stopPropagation()
+                  openEditorFor(q)
+                })
+              })(q)
+              numLayer.appendChild(chip)
+            }
           }
         }
       }
@@ -1604,7 +1747,7 @@ window.__ModuleLoader__.load({
       /** 提交前把批注块拼进 composer 草稿（随回车一起发送）。
        *  返回 true 表示批注块已在草稿中（本次刚拼入，或之前已拼入未发送）。 */
       function attachAndSend(e) {
-        var current = sessions.list.getSnapshot().current
+        var current = readCurrentSessionId()
         if (current === undefined) return false
         try {
           var scoped = sessions.scope(current)
@@ -1900,10 +2043,10 @@ window.__ModuleLoader__.load({
       function watchInputDraft() {
         if (inputWatchTimer !== null) { clearInterval(inputWatchTimer); inputWatchTimer = null }
         if (typeof inputUnsub === 'function') { inputUnsub(); inputUnsub = null }
-        var id = sessions.list.getSnapshot().current
+        var id = readCurrentSessionId()
         if (id !== undefined && tryWatchInputDraft(id)) return
         inputWatchTimer = setInterval(function () {
-          var cur = sessions.list.getSnapshot().current
+          var cur = readCurrentSessionId()
           if (cur !== undefined && tryWatchInputDraft(cur)) {
             clearInterval(inputWatchTimer)
             inputWatchTimer = null
@@ -2304,10 +2447,12 @@ window.__ModuleLoader__.load({
       }
 
       // ---------- 待发送批注按会话恢复 ----------
-      var lastSessionId = sessions.list.getSnapshot().current
+      var lastSessionId = readCurrentSessionId()
       ui.quotes = readPendingQuotes(lastSessionId)
-      var unsub = sessions.list.subscribe(function () {
-        var cur = sessions.list.getSnapshot().current
+      // 会话切换：0.1.7 起 selection 变化不再写进 list 快照，必须订阅
+      // ui-session 的 current source，否则切会话时待发送批注不会跟着切换。
+      var unsub = currentSessionSource().subscribe(function () {
+        var cur = readCurrentSessionId()
         if (cur === lastSessionId) return
         writePendingQuotes(lastSessionId)
         lastSessionId = cur
@@ -2353,11 +2498,12 @@ window.__ModuleLoader__.load({
         tipLayer.remove()
         host.remove()
         overlay.remove()
+        numLayer.remove()
       }
     }
 
     exports.name = '@changfenhuang/dsh-annotation'
-    exports.inject = ['sessions', 'conversation', 'locale']
+    exports.inject = ['sessions', 'conversation', 'locale', 'uiSession']
     exports.apply = apply
 
     return module.exports

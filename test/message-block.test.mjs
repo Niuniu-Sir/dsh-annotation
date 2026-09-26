@@ -23,7 +23,9 @@ function harness(lang, draft, sourcePath) {
     var annotationAttached = false
     var sessions = { list: { getSnapshot: () => ({ current: 'session' }) }, scope: () => ({}) }
     var ctx = { conversation: { input: { for: () => shell } } }
+    var uiSessionService = null
     function showToast() {}
+    ${['uiSessionFace', 'currentSessionSource', 'readCurrentSessionId'].map(fn).join('\n')}
     ${['buildBlock', 'shouldAttachForEnter', 'isCommandDraft', 'attachAndSend', 'hideAnnotationBlock', 'parseItemsFromBubble'].map(fn).join('\n')}
     return { setLang, attachAndSend, hideAnnotationBlock, parseItemsFromBubble }
   `)(shell, document, { SHOW_TEXT: 4 }, sourcePath)
