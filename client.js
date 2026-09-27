@@ -184,9 +184,7 @@ window.__ModuleLoader__.load({
         bubble: { tag: '批注 ×{n}', title: '本消息携带批注（{n} 条）' },
         reply: {
           headWithQuote: '批注 {n} 的原文',
-          headNoQuote: '批注 {n}',
           notePrefix: '你的批注：',
-          missing: '（未找到对应批注条目）',
         },
         toast: {
           attachFail: '批注拼稿失败，消息将不带批注发送：',
@@ -222,9 +220,7 @@ window.__ModuleLoader__.load({
         bubble: { tag: 'Annotations ×{n}', title: 'This message carries {n} annotation(s)' },
         reply: {
           headWithQuote: 'Source of annotation {n}',
-          headNoQuote: 'Annotation {n}',
           notePrefix: 'Your note: ',
-          missing: '(no matching annotation found)',
         },
         toast: {
           attachFail: 'Failed to attach annotations; the message will be sent without them: ',
@@ -1237,7 +1233,7 @@ window.__ModuleLoader__.load({
           if (mutations[i].type === 'childList') { hasRowInsert = true; break }
         }
         if (hasRowInsert) {
-          decorateAll()
+          scheduleDecorateAll()
           return
         }
         // 流式批次: 只做助手回复芯片的限流装饰(行内 data-streaming 守卫已保证
@@ -2255,13 +2251,6 @@ window.__ModuleLoader__.load({
         return null
       }
 
-      /** 一次性诊断（仅控制台，不打扰用户）：标记行 + 原因。 */
-      function markRowDiag(row, msg) {
-        if (row.hasAttribute('data-annotation-diag')) return
-        row.setAttribute('data-annotation-diag', '')
-        console.warn('[annotation] ' + msg, row)
-      }
-
       /** 扫描所有已结束流式输出的助手行：把「Annotation N：」替换为可悬浮芯片。 */
       /** 流式 mutation 批次的芯片装饰限流: 前导 + 500ms 拖尾, 每批次最多触发一次
        *  增量扫描(只扫助手行), 代替逐批全文档 decorateAll。 */
@@ -2295,18 +2284,16 @@ window.__ModuleLoader__.load({
           if (el.querySelector('[data-annotation-reply-chip]') !== null) continue
           if ((el.textContent || '').indexOf('Annotation') === -1) continue
           var items = findPrevAnnotationItems(el)
-          if (items === null || items.length === 0) {
-            // 拿不到条目数据也照样生成芯片（hover 显示占位），并一次性提示。
-            items = []
-            markRowDiag(el, '未找到批注条目数据，芯片将显示占位内容（可继续用）')
-          }
+          // 拿不到条目数据就干脆不生成芯片，保留原文「Annotation N：」——
+          // 一个 hover 只显示「未找到对应批注条目」的占位芯片没有任何价值。
+          if (items === null || items.length === 0) continue
           decorateAnnotationLabels(el, items)
         }
       }
 
       /** 在行内所有文本节点中找「Annotation N：」（不区分大小写），替换为芯片。 */
       function decorateAnnotationLabels(row, items) {
-        var re = /Annotation[\s\u200b\u200c\u200d\u00ad]*(\d+)[\s\u200b\u200c\u200d\u00ad]*[:：]/gi
+        var re = /Annotation[\s\u200b\u200c\u200d\u00ad]*(\d+)[\s\u200b\u200c\u200d\u00ad]*[:：]?/gi
         // 先快照所有文本节点，再逐个处理：遍历中途修改树会让 TreeWalker
         // 指针失效（处理完第一个节点后遍历就断了）——这是「只有第一个
         // Annotation 变成芯片」的根因。
@@ -2325,30 +2312,43 @@ window.__ModuleLoader__.load({
           var last = 0
           re.lastIndex = 0
           var m
+          var replaced = 0
           while ((m = re.exec(v)) !== null) {
             if (m.index > last) frag.appendChild(document.createTextNode(v.slice(last, m.index)))
-            frag.appendChild(makeReplyChip(parseInt(m[1], 10), items))
+            var num = parseInt(m[1], 10)
+            var item = items[num - 1]
+            // 编号越界（比如模型自己在思考里写了「Annotation 5：」，实际只有 3 条）
+            // 不是真正的逐条回应：原文照旧，不生成芯片。
+            if (item !== undefined) {
+              frag.appendChild(makeReplyChip(num, item))
+              replaced++
+              done++
+            } else {
+              frag.appendChild(document.createTextNode(m[0]))
+            }
             last = m.index + m[0].length
-            done++
           }
+          // 一个都没真正替换时绝不碰 DOM：否则 replaceChild 会用一个内容相同的
+          // 新节点换上，产生 childList mutation → MutationObserver → 全量装饰 →
+          // 再替换…… 自激成死循环，把客户端主线程打满。
+          if (replaced === 0) continue
           if (last < v.length) frag.appendChild(document.createTextNode(v.slice(last)))
           n.parentNode.replaceChild(frag, n)
         }
+        // 匹配不到完整「Annotation N：」时静默：正文里出现 annotation 这个词
+        // （模型自己的措辞、英文注解说明等）本来就不该产生任何日志。
         if (done > 0) {
           console.log('[annotation] 回复批注芯片 ×' + done, row.querySelectorAll('[data-annotation-reply-chip]').length + ' 个元素')
-        } else {
-          // 行内含 Annotation 但一个都没匹配上 → 文本节点里没有完整「Annotation N：」模式
-          markRowDiag(row, '行内含 Annotation 但未匹配到「Annotation N：」模式')
         }
       }
 
-      /** 构造「Annotation N」芯片（hover 显示该批注的原文与批注内容）。 */
-      function makeReplyChip(num, items) {
+      /** 构造「Annotation N」芯片（hover 显示该批注的原文与批注内容）。
+       *  `item` 必定存在：调用方只在编号能对应到批注条目时才生成芯片。 */
+      function makeReplyChip(num, item) {
         var chip = document.createElement('span')
         chip.setAttribute('data-annotation-reply-chip', '')
         chip.style.cssText = 'display:inline-flex;align-items:center;height:18px;padding:0 6px;margin:0 2px;border-radius:9px;border:1px solid var(--dsw-alias-border-inverted);background:var(--dsw-specific-menu,#2c2c2e);color:var(--dsw-alias-text-accent,#4c9aff);font-family:var(--dsw-font-family,system-ui);font-size:11px;font-weight:600;cursor:default;vertical-align:middle;'
         chip.textContent = 'Annotation ' + num
-        var item = items[num - 1]
         var grace = null
         function hide() {
           if (grace !== null) clearTimeout(grace)
@@ -2363,24 +2363,17 @@ window.__ModuleLoader__.load({
           el.style.cssText = 'position:fixed;z-index:1160;width:320px;max-width:calc(100vw - 16px);padding:10px 12px;border-radius:12px;border:1px solid var(--dsw-alias-border-inverted);background:var(--dsw-specific-menu,#2c2c2e);box-shadow:var(--dsw-shadow-lv3);font-family:var(--dsw-font-family,system-ui);font-size:12px;color:var(--dsw-alias-label-primary);'
           var head = document.createElement('div')
           head.style.cssText = 'font-weight:600;margin-bottom:6px;'
-          head.textContent = item !== undefined ? t('reply.headWithQuote', { n: num }) : t('reply.headNoQuote', { n: num })
+          head.textContent = t('reply.headWithQuote', { n: num })
           el.appendChild(head)
-          if (item !== undefined) {
-            var quote = document.createElement('div')
-            quote.style.cssText = 'font-size:12px;line-height:1.5;color:var(--dsw-alias-label-secondary);word-break:break-word;padding:6px 8px;border-radius:8px;background:rgba(127,127,127,.12);'
-            quote.textContent = truncate(item.text, 140)
-            el.appendChild(quote)
-            if (item.note !== '') {
-              var note = document.createElement('div')
-              note.style.cssText = 'font-size:11px;color:var(--dsw-alias-text-accent,#4c9aff);margin-top:6px;word-break:break-word;'
-              note.textContent = t('reply.notePrefix') + truncate(item.note, 80)
-              el.appendChild(note)
-            }
-          } else {
-            var none = document.createElement('div')
-            none.style.cssText = 'font-size:11px;color:var(--dsw-alias-label-tertiary);'
-            none.textContent = t('reply.missing')
-            el.appendChild(none)
+          var quote = document.createElement('div')
+          quote.style.cssText = 'font-size:12px;line-height:1.5;color:var(--dsw-alias-label-secondary);word-break:break-word;padding:6px 8px;border-radius:8px;background:rgba(127,127,127,.12);'
+          quote.textContent = truncate(item.text, 140)
+          el.appendChild(quote)
+          if (typeof item.note === 'string' && item.note !== '') {
+            var note = document.createElement('div')
+            note.style.cssText = 'font-size:11px;color:var(--dsw-alias-text-accent,#4c9aff);margin-top:6px;word-break:break-word;'
+            note.textContent = t('reply.notePrefix') + truncate(item.note, 80)
+            el.appendChild(note)
           }
           presentTip(chip, el)
           var r2 = chip.getBoundingClientRect()
@@ -2431,6 +2424,27 @@ window.__ModuleLoader__.load({
       }
 
       var decoTimer = null
+      /** 全量装饰的合并调度：首个批次立即执行（气泡隐藏要赶在浏览器绘制前，
+       *  否则会闪一下批注块），紧随其后的批次合并进 120ms 窗口。
+       *  原因：装饰本身会改宿主 DOM（贴标签、换芯片、切气泡文本）并再次触发
+       *  MutationObserver，一条回复上的多次替换会在长会话里滚成高频全量扫描，
+       *  把主线程烧满——表现就是客户端卡死、什么都点不动。 */
+      var decorateAllPending = null
+      var lastDecorateAllAt = 0
+      function scheduleDecorateAll() {
+        var now = performance.now()
+        if (now - lastDecorateAllAt >= 120) {
+          lastDecorateAllAt = now
+          decorateAll()
+          return
+        }
+        if (decorateAllPending !== null) return
+        decorateAllPending = setTimeout(function () {
+          decorateAllPending = null
+          lastDecorateAllAt = performance.now()
+          decorateAll()
+        }, 120)
+      }
       function kickDecorate() {
         decorateAll()
         if (decoTimer === null) decoTimer = setInterval(decorateAll, 1000)
@@ -2514,6 +2528,7 @@ window.__ModuleLoader__.load({
         if (typeof inputUnsub === 'function') inputUnsub()
         if (typeof localeUnsub === 'function') localeUnsub()
         if (decoTimer !== null) { clearInterval(decoTimer); decoTimer = null }
+        if (decorateAllPending !== null) { clearTimeout(decorateAllPending); decorateAllPending = null }
         if (composerObserver !== null) composerObserver.disconnect()
         chipLayer.remove()
         tipLayer.remove()
