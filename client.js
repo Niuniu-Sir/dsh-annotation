@@ -1951,7 +1951,7 @@ window.__ModuleLoader__.load({
         if (ui.quotes.length === 0) return
         var el = document.createElement('div')
         el.className = 'dsh-ann-tip'
-        el.style.cssText = 'position:fixed;z-index:1160;width:300px;max-width:calc(100vw - 16px);padding:10px 12px;border-radius:12px;border:1px solid var(--dsw-alias-border-inverted);background:var(--dsw-specific-menu,#2c2c2e);box-shadow:var(--dsw-shadow-lv3);font-family:var(--dsw-font-family,system-ui);font-size:12px;color:var(--dsw-alias-label-primary);'
+        el.style.cssText = 'position:fixed;z-index:1160;box-sizing:border-box;width:300px;max-width:calc(100vw - 16px);padding:10px 12px;border-radius:12px;border:1px solid var(--dsw-alias-border-inverted);background:var(--dsw-specific-menu,#2c2c2e);box-shadow:var(--dsw-shadow-lv3);font-family:var(--dsw-font-family,system-ui);font-size:12px;color:var(--dsw-alias-label-primary);'
         var head = document.createElement('div')
         head.style.cssText = 'font-weight:600;margin-bottom:6px;'
         head.textContent = t('tip.title', { n: ui.quotes.length })
@@ -1990,12 +1990,33 @@ window.__ModuleLoader__.load({
         presentTip(chipLayer, el)
         var r2 = chipLayer.getBoundingClientRect()
         var w2 = 300
-        var h2 = el.offsetHeight || 120
-        var left = Math.max(8, Math.min(r2.left, window.innerWidth - w2 - 8))
-        var top = r2.top - h2 - 6
-        if (top < 8) top = r2.bottom + 6
-        el.style.left = left + 'px'
-        el.style.top = Math.max(8, top) + 'px'
+        var gap = 8
+        // 浮窗只允许出现在正文可见区里（避开会话头部与整块输入区）：批注条数多
+        // 时先把它限制在这个高度内、内部滚动——否则十来个批注会把浮窗顶出屏幕
+        // 或压到输入框上，看起来就是"浮窗显示错乱"。
+        var topLimit = gap
+        var heads = hostHeaderRects()
+        for (var hi = 0; hi < heads.length; hi++) {
+          if (r2.left + w2 <= heads[hi].left || r2.left >= heads[hi].right) continue
+          if (heads[hi].bottom + gap > topLimit) topLimit = heads[hi].bottom + gap
+        }
+        var bottomLimit = window.innerHeight - gap
+        var seats = hostComposerRects()
+        for (var si = 0; si < seats.length; si++) {
+          if (r2.left + w2 <= seats[si].left || r2.left >= seats[si].right) continue
+          if (seats[si].top - gap < bottomLimit) bottomLimit = seats[si].top - gap
+        }
+        var room = Math.round(r2.top - gap - topLimit)
+        if (room < 120) room = Math.round(bottomLimit - r2.bottom - gap)
+        room = Math.max(80, room)
+        el.style.maxHeight = room + 'px'
+        el.style.overflowY = 'auto'
+        var h2 = Math.min(el.offsetHeight || 120, room)
+        var top = r2.top - h2 - gap
+        if (top < topLimit) top = r2.bottom + gap
+        if (top + h2 > bottomLimit) top = bottomLimit - h2
+        el.style.left = Math.max(8, Math.min(r2.left, window.innerWidth - w2 - 8)) + 'px'
+        el.style.top = Math.round(Math.max(topLimit, top)) + 'px'
         el.style.width = w2 + 'px'
       }
 
@@ -2160,7 +2181,7 @@ window.__ModuleLoader__.load({
           tag.addEventListener('mouseenter', function () {
             var el = document.createElement('div')
             el.className = 'dsh-ann-tip'
-            el.style.cssText = 'position:fixed;z-index:1160;width:300px;max-width:calc(100vw - 16px);padding:10px 12px;border-radius:12px;border:1px solid var(--dsw-alias-border-inverted);background:var(--dsw-specific-menu,#2c2c2e);box-shadow:var(--dsw-shadow-lv3);font-family:var(--dsw-font-family,system-ui);font-size:12px;color:var(--dsw-alias-label-primary);'
+            el.style.cssText = 'position:fixed;z-index:1160;box-sizing:border-box;width:300px;max-width:calc(100vw - 16px);padding:10px 12px;border-radius:12px;border:1px solid var(--dsw-alias-border-inverted);background:var(--dsw-specific-menu,#2c2c2e);box-shadow:var(--dsw-shadow-lv3);font-family:var(--dsw-font-family,system-ui);font-size:12px;color:var(--dsw-alias-label-primary);'
             var head = document.createElement('div')
             head.style.cssText = 'font-weight:600;margin-bottom:6px;'
             head.textContent = t('bubble.title', { n: list.length })
