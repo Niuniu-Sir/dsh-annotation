@@ -907,31 +907,46 @@ window.__ModuleLoader__.load({
       var sessions = ctx.sessions
 
       // ---- 当前会话 id 解析（兼容 DSH 0.1.6-alpha.2+，内核 commit 6830e1460d 移除了 sessions.list.current）----
-      // 优先级：① 公开的 currentProvideInfo（ISessions 稳定读面，新旧内核均有，会话切换可订阅）；
-      // ② 旧的 list.current（0.1.6-alpha.2 之前的宿主与旧测试夹具）；
-      // ③ 私有持久化键 dsh.sessions.current（最后兜底：新内核的 selection store 仍以该键持久化，
-      // 键名再变即失效，正常路径不应走到这里）。
+      // 优先级：
+      // ① `localStorage['dsh.sessions.current'].sessionId` —— 内核 workspace 服务持久化的选择态
+      //    （`createSnapshotStore({}, { persist: { name: 'dsh.sessions.current' } })`，
+      //    写入形状 `{ sessionId }`，会话归档时由内核 clearArchivedCurrent 自行清理）。
+      //    0.1.6-alpha.2 ~ 0.1.7-rc.2 上这是唯一真实可用的路径。
+      // ② list 快照上的 `current` —— 0.1.6-alpha.2 之前的宿主，该字段是精确选中值。
+      // ③ list 行上的 `retainedBy.mainView > 0` —— 公开成员，兜底"尚未落盘 / 存储被清"的场景。
+      //    它是"主视图 retain 的会话"而非选中值：内核自己（dsh-client-ui-session:283）也只在
+      //    id 未知时才用它猜，故排在精确值之后。
+      // 曾作为 ① 的 `currentProvideInfo`（挂在 sessions 服务上）只存在于旧源码线
+      // （packages/client/runtime），上游现契约（packages/api/session-controller）
+      // 已无此成员，故整条移除。
       function currentSessionId() {
         try {
-          var provide = sessions.currentProvideInfo
-          if (provide !== undefined && provide !== null
-            && typeof provide.getSnapshot === 'function') {
-            var info = provide.getSnapshot()
-            if (info !== undefined && info !== null && typeof info.sessionId === 'string') return info.sessionId
+          if (typeof localStorage !== 'undefined') {
+            var raw = localStorage.getItem('dsh.sessions.current')
+            if (raw !== null) {
+              var parsed = JSON.parse(raw)
+              if (parsed !== null && typeof parsed === 'object'
+                && typeof parsed.sessionId === 'string' && parsed.sessionId !== '') return parsed.sessionId
+            }
           }
         } catch (_) { /* 落到下一级 */ }
         try {
           var snap = sessions.list.getSnapshot()
-          if (snap !== undefined && snap !== null && typeof snap.current === 'string') return snap.current
+          if (snap !== undefined && snap !== null) {
+            if (typeof snap.current === 'string' && snap.current !== '') return snap.current
+            var byId = snap.byId
+            if (byId !== undefined && byId !== null && typeof byId === 'object') {
+              var ids = Array.isArray(snap.ids) ? snap.ids : Object.keys(byId)
+              for (var i = 0; i < ids.length; i++) {
+                var retained = byId[ids[i]] !== undefined && byId[ids[i]] !== null
+                  ? byId[ids[i]].retainedBy : null
+                if (retained !== null && typeof retained === 'object'
+                  && typeof retained.mainView === 'number' && retained.mainView > 0) return ids[i]
+              }
+            }
+          }
         } catch (_) { /* 落到下一级 */ }
-        try {
-          if (typeof localStorage === 'undefined') return undefined
-          var raw = localStorage.getItem('dsh.sessions.current')
-          if (raw === null) return undefined
-          var parsed = JSON.parse(raw)
-          return parsed !== null && typeof parsed === 'object'
-            && typeof parsed.sessionId === 'string' ? parsed.sessionId : undefined
-        } catch (_) { return undefined }
+        return undefined
       }
 
       var host = document.createElement('div')
@@ -2343,7 +2358,8 @@ window.__ModuleLoader__.load({
 
       // ---------- 待发送批注按会话恢复 ----------
       // 0.1.6-alpha.2 起选择态已移出 list store：list.subscribe 不再于会话切换时触发，
-      // 故同时订阅公开的 currentProvideInfo，并加 1s 轮询兜底（三者任一触发切换即恢复）。
+      // 新宿主上本 helper 读的是持久化键 / list 行，都没有可订阅的选中态来源，
+      // 故保留 list.subscribe（老宿主精确）+ 1s 轮询兜底（新宿主唯一触发点）。
       var lastSessionId = currentSessionId()
       ui.quotes = readPendingQuotes(lastSessionId)
       function onSessionSwitch() {
@@ -2364,7 +2380,6 @@ window.__ModuleLoader__.load({
         renderMarkers()
       }
       var unsubList = null
-      var unsubProvide = null
       var switchTimer = null
       try {
         if (sessions.list !== undefined && sessions.list !== null
@@ -2372,17 +2387,9 @@ window.__ModuleLoader__.load({
           unsubList = sessions.list.subscribe(onSessionSwitch)
         }
       } catch (_) { unsubList = null }
-      try {
-        var provideSource = sessions.currentProvideInfo
-        if (provideSource !== undefined && provideSource !== null
-          && typeof provideSource.subscribe === 'function') {
-          unsubProvide = provideSource.subscribe(onSessionSwitch)
-        }
-      } catch (_) { unsubProvide = null }
       switchTimer = setInterval(onSessionSwitch, 1000)
       function unsubSessionSwitch() {
         try { if (typeof unsubList === 'function') unsubList() } catch (_) { /* ignore */ }
-        try { if (typeof unsubProvide === 'function') unsubProvide() } catch (_) { /* ignore */ }
         if (switchTimer !== null) { clearInterval(switchTimer); switchTimer = null }
       }
       var unsub = unsubSessionSwitch

@@ -9,7 +9,7 @@ function fn(name) {
   assert.ok(match, name)
   return match[0]
 }
-function harness(lang, draft, sourcePath, sessionsOverride) {
+function harness(lang, draft, sourcePath, sessionsOverride, storageOverride) {
   const nodes = []
   const bubble = { querySelectorAll: () => [], get textContent() { return nodes.map(n => n.nodeValue).join('') } }
   const row = { querySelector: () => bubble }
@@ -17,10 +17,9 @@ function harness(lang, draft, sourcePath, sessionsOverride) {
   const document = { createTreeWalker: () => { let i = 0; return { nextNode: () => nodes[i++] ?? null } } }
   const sessions = sessionsOverride ?? {
     list: { getSnapshot: () => ({ current: 'session' }) },
-    currentProvideInfo: { getSnapshot: () => ({ sessionId: 'session' }), subscribe: () => () => {} },
     scope: () => ({}),
   }
-  const api = Function('shell', 'document', 'NodeFilter', 'sourcePath', 'sessions', `
+  const api = Function('shell', 'document', 'NodeFilter', 'sourcePath', 'sessions', 'localStorage', `
     ${protocol}
     ${source.slice(source.indexOf('    function quoteWithSource('), source.indexOf('    function assistantRows('))}
     var ui = { quotes: [{ text: '原文包含提问：这个词', note: '解释一下' }] }
@@ -30,7 +29,7 @@ function harness(lang, draft, sourcePath, sessionsOverride) {
     function showToast() {}
     ${['currentSessionId', 'buildBlock', 'shouldAttachForEnter', 'isCommandDraft', 'attachAndSend', 'hideAnnotationBlock', 'parseItemsFromBubble'].map(fn).join('\n')}
     return { setLang, attachAndSend, hideAnnotationBlock, parseItemsFromBubble }
-  `)(shell, document, { SHOW_TEXT: 4 }, sourcePath, sessions)
+  `)(shell, document, { SHOW_TEXT: 4 }, sourcePath, sessions, storageOverride)
   api.setLang(lang)
   return { api, row, bubble, shell, render(value) {
     nodes.length = 0
@@ -83,16 +82,25 @@ for (const lang of ['zh', 'en']) {
   })
 }
 
-// issue #64：DSH 0.1.6-alpha.2 移除了 sessions.list.current，插件须经
-// currentProvideInfo 取到当前会话（list 快照无 current 的真实新内核形状）。
+// issue #64：DSH 0.1.6-alpha.2 移除了 sessions.list.current。已发布宿主上
+// `sessions.currentProvideInfo` 并不存在（上游契约已无此成员），真实可用路径是
+// ① localStorage['dsh.sessions.current'] ② 旧 list.current ③ list 行 retainedBy.mainView。
+const newKernelList = (rows, ids) => ({
+  list: { getSnapshot: () => ({ ids: ids ?? Object.keys(rows), byId: rows, phase: 'ready' }) },
+  scope: (id) => (Object.prototype.hasOwnProperty.call(rows, id) ? {} : undefined),
+})
 for (const lang of ['zh', 'en']) {
-  test(`${lang}: 新内核形状（list 无 current）下批注仍随消息发送（issue #64）`, () => {
-    const newKernelSessions = {
-      list: { getSnapshot: () => ({ ids: ['session-a'], byId: {}, phase: 'ready' }) },
-      currentProvideInfo: { getSnapshot: () => ({ sessionId: 'session-a' }), subscribe: () => () => {} },
-      scope: (id) => (id === 'session-a' ? {} : undefined),
-    }
-    const h = harness(lang, '我的问题', undefined, newKernelSessions)
+  test(`${lang}: 新内核形状（list 无 current）+ 持久化选择态下批注仍随消息发送（issue #64）`, () => {
+    const kernel = newKernelList({ 'session-a': { retainedBy: {} } })
+    const storage = { getItem: (k) => (k === 'dsh.sessions.current' ? JSON.stringify({ sessionId: 'session-a' }) : null) }
+    const h = harness(lang, '我的问题', undefined, kernel, storage)
+    assert.equal(h.api.attachAndSend({}), true)
+    assert.match(h.shell.state.getSnapshot().draft, /Annotation/)
+  })
+
+  test(`${lang}: 无持久化键时退回 retainedBy.mainView 公开面`, () => {
+    const kernel = newKernelList({ 'session-b': { retainedBy: { mainView: 1 } } })
+    const h = harness(lang, '我的问题', undefined, kernel)
     assert.equal(h.api.attachAndSend({}), true)
     assert.match(h.shell.state.getSnapshot().draft, /Annotation/)
   })

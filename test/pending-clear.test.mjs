@@ -26,8 +26,8 @@ test('watchInputDraft 订阅失败时每秒重试（初始化时序洞由重试�
 })
 
 test('会话切换作废旧会话未消费的发送暂存数据', () => {
-  // issue #64：0.1.6-alpha.2 起 list.subscribe 不再于切换时触发，改经
-  // onSessionSwitch 统一处理（双订阅 + 轮询兜底），旧暂存仍须作废。
+  // issue #64：0.1.6-alpha.2 起选择态移出 list store，list.subscribe 不再于切换时触发；
+  // 新宿主没有可订阅的选中态来源，故由 onSessionSwitch + 1s 轮询兜底（旧暂存仍须作废）。
   const sw = fnOf('onSessionSwitch')
   assert.match(sw, /currentSessionId\(\)/,
     'session-switch handler must resolve the id via currentSessionId (list.current is gone on new hosts)')
@@ -35,12 +35,12 @@ test('会话切换作废旧会话未消费的发送暂存数据', () => {
     'stale send staging from the previous session must be dropped, not consumed by the new session history')
   assert.match(source, /sessions\.list\.subscribe\(onSessionSwitch\)/,
     'must keep the legacy list subscription for old hosts')
-  assert.match(source, /currentProvideInfo[\s\S]*?subscribe\(onSessionSwitch\)/,
-    'must subscribe to the public currentProvideInfo for new hosts')
   assert.match(source, /setInterval\(onSessionSwitch, 1000\)/,
-    'must poll as fallback where neither subscription fires')
+    'must poll as fallback where no selection source can be subscribed')
   assert.match(source, /clearInterval\(switchTimer\)/,
     'dispose must stop the switch poller')
+  assert.doesNotMatch(source, /sessions\.currentProvideInfo/,
+    'sessions.currentProvideInfo exists on no published host (current contract lives in packages/api/session-controller and has no such member) — it must not be read or subscribed')
 })
 
 test('发送暂存数据在隐藏手术成功后才消费（peek → shift，不提前丢失）', () => {
@@ -49,17 +49,19 @@ test('发送暂存数据在隐藏手术成功后才消费（peek → shift，不
     'popping before hideAnnotationBlock succeeds loses the staged items when content is not rendered yet')
 })
 
-test('currentSessionId 三级解析：公开读面优先，私有键仅兜底（issue #64）', () => {
+test('currentSessionId 三级解析：持久化选择态 → 旧 list.current → retainedBy 公开面（issue #64）', () => {
   const helper = fnOf('currentSessionId')
-  assert.match(helper, /currentProvideInfo/,
-    'must prefer the public currentProvideInfo read face (stable across the list.current removal)')
-  assert.match(helper, /list\.getSnapshot/,
-    'must keep the legacy list.current fallback for old hosts')
   assert.match(helper, /dsh\.sessions\.current/,
-    'private persistence key is allowed only as last resort')
-  assert.ok(helper.indexOf('currentProvideInfo') < helper.indexOf('list.getSnapshot')
-    && helper.indexOf('list.getSnapshot') < helper.indexOf('dsh.sessions.current'),
-    'resolution order must be provide → list → localStorage')
+    'must read the kernel-persisted selection first — on 0.1.6-alpha.2 ~ 0.1.7-rc.2 it is the only path that works')
+  assert.match(helper, /snap\.current/,
+    'must keep the legacy list.current for hosts <= 0.1.6-alpha.1, where it is the exact selection')
+  assert.match(helper, /retainedBy/,
+    'must fall back to the public retainedBy.mainView>0 face (covers "no persisted key yet / storage cleared")')
+  assert.ok(helper.indexOf('dsh.sessions.current') < helper.indexOf('snap.current')
+    && helper.indexOf('snap.current') < helper.indexOf('retainedBy'),
+    'resolution order must be localStorage → list.current → retainedBy (retainedBy is the main-view heuristic the kernel itself only uses as a repair path)')
+  assert.doesNotMatch(source, /sessions\.currentProvideInfo/,
+    'the stale-source read face must be gone: upstream contract has no currentProvideInfo')
   assert.doesNotMatch(source, /getSnapshot\(\)\.current/,
     'no direct sessions.list.getSnapshot().current reads may remain — all must go through currentSessionId')
 })
