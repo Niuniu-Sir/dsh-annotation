@@ -62,6 +62,7 @@ window.__ModuleLoader__.load({
         '  gap: 2px; padding: 4px; border-radius: 12px;',
         '  border: 1px solid var(--dsw-alias-border-inverted);',
         '  background: var(--dsw-specific-menu, #2c2c2e);',
+        '  background: color-mix(in srgb, var(--dsw-specific-menu, #2c2c2e) 94%, transparent);',
         '  box-shadow: var(--dsw-shadow-lv3);',
         '  font-family: var(--dsw-font-family, system-ui);',
         '  animation: dsh-ann-pop .12s var(--ds-ease-in-out, ease); }',
@@ -92,6 +93,7 @@ window.__ModuleLoader__.load({
         '  max-width: calc(100vw - 16px); padding: 12px; border-radius: 12px;',
         '  border: 1px solid var(--dsw-alias-border-inverted);',
         '  background: var(--dsw-specific-menu, #2c2c2e);',
+        '  background: color-mix(in srgb, var(--dsw-specific-menu, #2c2c2e) 94%, transparent);',
         '  box-shadow: var(--dsw-shadow-lv3);',
         '  font-family: var(--dsw-font-family, system-ui);',
         '  animation: dsh-ann-pop .12s var(--ds-ease-in-out, ease); }',
@@ -163,7 +165,7 @@ window.__ModuleLoader__.load({
         '.dsh-ann-bar:hover,',
         '.dsh-ann-card:hover,',
         '[data-annotation-toast]:hover {',
-        '  background: var(--dsw-alias-bg-layer-2, #2c2c2e) !important; }',
+        '  background: var(--dsw-alias-bg-layer-2, var(--dsw-alias-bg-base, #2c2c2e)) !important; }',
         // 半透明 ↔ 不透明之间过渡一下，鼠标进出时不会「啪」地闪一下。
         '.dsh-ann-tip,',
         '[data-annotation-reply-chip],',
@@ -1072,7 +1074,7 @@ window.__ModuleLoader__.load({
           var el = document.createElement('div')
           el.setAttribute('data-annotation-toast', '')
           el.textContent = msg
-          el.style.cssText = 'position:fixed;z-index:1300;left:50%;bottom:88px;transform:translateX(-50%);max-width:min(420px,calc(100vw - 24px));padding:8px 14px;border-radius:10px;background:var(--dsw-specific-menu, #2c2c2e);border:1px solid var(--dsw-alias-border-inverted);box-shadow:var(--dsw-shadow-lv3);color:var(--dsw-alias-label-primary);font-family:var(--dsw-font-family,system-ui);font-size:12px;pointer-events:none;'
+          el.style.cssText = 'position:fixed;z-index:1300;left:50%;bottom:88px;transform:translateX(-50%);max-width:min(420px,calc(100vw - 24px));padding:8px 14px;border-radius:10px;background:var(--dsw-specific-menu, #2c2c2e);background:color-mix(in srgb, var(--dsw-specific-menu, #2c2c2e) 94%, transparent);border:1px solid var(--dsw-alias-border-inverted);box-shadow:var(--dsw-shadow-lv3);color:var(--dsw-alias-label-primary);font-family:var(--dsw-font-family,system-ui);font-size:12px;pointer-events:none;'
           document.body.appendChild(el)
           if (toastTimer !== null) clearTimeout(toastTimer)
           toastTimer = setTimeout(function () {
@@ -1887,7 +1889,7 @@ window.__ModuleLoader__.load({
       // ---------- 输入框旁的批注标签（N 条批注 · 悬浮看全部内容） ----------
       var chipLayer = document.createElement('div')
       chipLayer.setAttribute('data-annotation-chip', '')
-      chipLayer.style.cssText = 'position:fixed;z-index:1150;display:none;align-items:center;gap:4px;height:22px;padding:0 10px;border-radius:11px;border:1px solid var(--dsw-alias-border-inverted);background:var(--dsw-specific-menu, #2c2c2e);box-shadow:var(--dsw-shadow-lv3);font-family:var(--dsw-font-family,system-ui);font-size:11px;color:var(--dsw-alias-label-primary);cursor:default;animation:dsh-ann-pop .12s var(--ds-ease-in-out, ease);'
+      chipLayer.style.cssText = 'position:fixed;z-index:1150;display:none;align-items:center;gap:4px;height:22px;padding:0 10px;border-radius:11px;border:1px solid var(--dsw-alias-border-inverted);background:var(--dsw-specific-menu, #2c2c2e);background:color-mix(in srgb, var(--dsw-specific-menu, #2c2c2e) 94%, transparent);box-shadow:var(--dsw-shadow-lv3);font-family:var(--dsw-font-family,system-ui);font-size:11px;color:var(--dsw-alias-label-primary);cursor:default;animation:dsh-ann-pop .12s var(--ds-ease-in-out, ease);'
       document.body.appendChild(chipLayer)
       var tipLayer = document.createElement('div')
       tipLayer.setAttribute('data-annotation-tip-layer', '')
@@ -1966,7 +1968,7 @@ window.__ModuleLoader__.load({
         if (ui.quotes.length === 0) return
         var el = document.createElement('div')
         el.className = 'dsh-ann-tip'
-        el.style.cssText = 'position:fixed;z-index:1160;box-sizing:border-box;width:300px;max-width:calc(100vw - 16px);padding:10px 12px;border-radius:12px;border:1px solid var(--dsw-alias-border-inverted);background:var(--dsw-specific-menu, #2c2c2e);box-shadow:var(--dsw-shadow-lv3);font-family:var(--dsw-font-family,system-ui);font-size:12px;color:var(--dsw-alias-label-primary);'
+        el.style.cssText = 'position:fixed;z-index:1160;box-sizing:border-box;width:300px;max-width:calc(100vw - 16px);padding:10px 12px;border-radius:12px;border:1px solid var(--dsw-alias-border-inverted);background:var(--dsw-specific-menu, #2c2c2e);background:color-mix(in srgb, var(--dsw-specific-menu, #2c2c2e) 94%, transparent);box-shadow:var(--dsw-shadow-lv3);font-family:var(--dsw-font-family,system-ui);font-size:12px;color:var(--dsw-alias-label-primary);'
         var head = document.createElement('div')
         head.style.cssText = 'font-weight:600;margin-bottom:6px;'
         head.textContent = t('tip.title', { n: ui.quotes.length })
@@ -2191,12 +2193,12 @@ window.__ModuleLoader__.load({
         var tag = document.createElement('span')
         tag.setAttribute('data-annotation-bubble-tag', '')
         tag.textContent = t('bubble.tag', { n: items.length })
-        tag.style.cssText = 'display:inline-flex;align-items:center;height:18px;padding:0 8px;margin:4px 0 0 4px;border-radius:9px;border:1px solid var(--dsw-alias-border-inverted);background:var(--dsw-specific-menu, #2c2c2e);color:var(--dsw-alias-label-secondary);font-family:var(--dsw-font-family,system-ui);font-size:10px;cursor:default;'
+        tag.style.cssText = 'display:inline-flex;align-items:center;height:18px;padding:0 8px;margin:4px 0 0 4px;border-radius:9px;border:1px solid var(--dsw-alias-border-inverted);background:var(--dsw-specific-menu, #2c2c2e);background:color-mix(in srgb, var(--dsw-specific-menu, #2c2c2e) 94%, transparent);color:var(--dsw-alias-label-secondary);font-family:var(--dsw-font-family,system-ui);font-size:10px;cursor:default;'
         ;(function (list) {
           tag.addEventListener('mouseenter', function () {
             var el = document.createElement('div')
             el.className = 'dsh-ann-tip'
-            el.style.cssText = 'position:fixed;z-index:1160;box-sizing:border-box;width:300px;max-width:calc(100vw - 16px);padding:10px 12px;border-radius:12px;border:1px solid var(--dsw-alias-border-inverted);background:var(--dsw-specific-menu, #2c2c2e);box-shadow:var(--dsw-shadow-lv3);font-family:var(--dsw-font-family,system-ui);font-size:12px;color:var(--dsw-alias-label-primary);'
+            el.style.cssText = 'position:fixed;z-index:1160;box-sizing:border-box;width:300px;max-width:calc(100vw - 16px);padding:10px 12px;border-radius:12px;border:1px solid var(--dsw-alias-border-inverted);background:var(--dsw-specific-menu, #2c2c2e);background:color-mix(in srgb, var(--dsw-specific-menu, #2c2c2e) 94%, transparent);box-shadow:var(--dsw-shadow-lv3);font-family:var(--dsw-font-family,system-ui);font-size:12px;color:var(--dsw-alias-label-primary);'
             var head = document.createElement('div')
             head.style.cssText = 'font-weight:600;margin-bottom:6px;'
             head.textContent = t('bubble.title', { n: list.length })
@@ -2366,7 +2368,7 @@ window.__ModuleLoader__.load({
       function makeReplyChip(num, item) {
         var chip = document.createElement('span')
         chip.setAttribute('data-annotation-reply-chip', '')
-        chip.style.cssText = 'display:inline-flex;align-items:center;height:18px;padding:0 6px;margin:0 2px;border-radius:9px;border:1px solid var(--dsw-alias-border-inverted);background:var(--dsw-specific-menu, #2c2c2e);color:var(--dsw-alias-text-accent,#4c9aff);font-family:var(--dsw-font-family,system-ui);font-size:11px;font-weight:600;cursor:default;vertical-align:middle;'
+        chip.style.cssText = 'display:inline-flex;align-items:center;height:18px;padding:0 6px;margin:0 2px;border-radius:9px;border:1px solid var(--dsw-alias-border-inverted);background:var(--dsw-specific-menu, #2c2c2e);background:color-mix(in srgb, var(--dsw-specific-menu, #2c2c2e) 94%, transparent);color:var(--dsw-alias-text-accent,#4c9aff);font-family:var(--dsw-font-family,system-ui);font-size:11px;font-weight:600;cursor:default;vertical-align:middle;'
         chip.textContent = 'Annotation ' + num
         var grace = null
         function hide() {
@@ -2379,7 +2381,7 @@ window.__ModuleLoader__.load({
         chip.addEventListener('mouseenter', function () {
           var el = document.createElement('div')
           el.className = 'dsh-ann-tip'
-          el.style.cssText = 'position:fixed;z-index:1160;width:320px;max-width:calc(100vw - 16px);padding:10px 12px;border-radius:12px;border:1px solid var(--dsw-alias-border-inverted);background:var(--dsw-specific-menu, #2c2c2e);box-shadow:var(--dsw-shadow-lv3);font-family:var(--dsw-font-family,system-ui);font-size:12px;color:var(--dsw-alias-label-primary);'
+          el.style.cssText = 'position:fixed;z-index:1160;width:320px;max-width:calc(100vw - 16px);padding:10px 12px;border-radius:12px;border:1px solid var(--dsw-alias-border-inverted);background:var(--dsw-specific-menu, #2c2c2e);background:color-mix(in srgb, var(--dsw-specific-menu, #2c2c2e) 94%, transparent);box-shadow:var(--dsw-shadow-lv3);font-family:var(--dsw-font-family,system-ui);font-size:12px;color:var(--dsw-alias-label-primary);'
           var head = document.createElement('div')
           head.style.cssText = 'font-weight:600;margin-bottom:6px;'
           head.textContent = t('reply.headWithQuote', { n: num })
