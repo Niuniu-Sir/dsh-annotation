@@ -103,6 +103,8 @@ test('编辑窗口：标题右侧可删除该批注，且不再有取消按钮',
   assert.match(editor, /removeQuote\(editingId\)/, '删除复用待发送批注移除逻辑')
   assert.doesNotMatch(editor, /dsh-ann-cancel/, '编辑窗口不再有取消按钮')
   assert.doesNotMatch(source, /dsh-ann-cancel/, '取消按钮的样式一并移除')
+})
+
 // Source slice for one `function name(...) { ... }` by brace matching.
 function tryExtractFunction (name) {
   const start = source.indexOf(`function ${name}(`)
@@ -230,7 +232,4 @@ test('编号胶囊的顶部下限抬到会话列上沿 + 4px，原文已滚入�
     'floor comes from the conversation column, defaulting to the viewport edge')
   assert.match(build, /anchor\.top >= chipFloor && chipTop < chipFloor/,
     'clamp only while the passage itself starts below the floor — passages scrolled under the header keep the skip rule (#65)')
-})
-
-
 })
