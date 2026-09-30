@@ -28,7 +28,7 @@
 - **恢复 DSH 0.1.1（textarea 输入区）上的 Enter 批注拼稿**：1.4.6 适配 0.1.2 的 `div[data-composer-input]` 输入区时，移除了 Enter keydown 门控里的 textarea 分支，旧核心上 Enter 不再拼入批注块（发送按钮路径不受影响，但 Enter 发送会静默丢弃待发送批注）。门控现并行接受 `div[data-composer-input]` 与 textarea 两条分支；0.1.1-rc.2 实测恢复，div 分支行为不变。
 
 ### 工程
-- CI 与发布验收不再把宿主钉在过期标签上。单元检查（Node 22 / 24）只跑 `pnpm run check`，不克隆宿主；冒烟和发布前的真实 Web 验收改为 `scripts/resolve-dsh-tag.mjs` 在运行时选取最高的 `dsh-v*` 标签。
+- CI 与发布验收不再把宿主钉在过期标签上。单元检查（Node 22 / 24）只跑 `pnpm run check`，不克隆宿主；冒烟和发布前的真实 Web 验收改为 `scripts/resolve-dsh-tag.mjs` 在运行时选取最高的 `dsh-v*` 标签。冒烟探针按文档相对路径解析插件地址（0.2.0 起是 `plugins/??…`），不再把相对路径粘到端口后面。
 
 ## [1.4.11-preview.1] - 2026-09-15
 

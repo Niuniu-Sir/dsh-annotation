@@ -8,6 +8,7 @@ import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import { createServer } from 'node:net'
 import { fileURLToPath, pathToFileURL } from 'node:url'
+import { pluginClientUrl } from './plugin-client-url.mjs'
 
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const DSH_ROOT = process.env.DSH_ROOT ?? resolve(process.env.HOME ?? '', '.dsh/source/current')
@@ -102,7 +103,7 @@ try {
     }
   })
   const clientUrl = state.clientUrl ?? '/plugins/@changfenhuang/dsh-annotation/client.js'
-  const response = await fetch(`http://127.0.0.1:${PORT}${clientUrl}`)
+  const response = await fetch(pluginClientUrl(readyUrl, clientUrl))
   if (!response.ok) fail(`Annotation bundle 返回 ${response.status}`)
   if (!state.mounted) fail('Annotation bundle 已加载，但页面没有挂载批注入口')
   if (pageErrors.length > 0) fail(`页面异常: ${pageErrors.slice(0, 3).join(' | ')}`)
