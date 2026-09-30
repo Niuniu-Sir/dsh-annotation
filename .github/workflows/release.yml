@@ -19,7 +19,6 @@ jobs:
     env:
       RELEASE_TAG: ${{ github.event.release.tag_name }}
       PRERELEASE: ${{ github.event.release.prerelease }}
-      HOST_REF: dsh-v0.1.6-alpha.1
 
     steps:
       # actions/checkout@v4
@@ -86,13 +85,18 @@ jobs:
             fi
           fi
 
-      - name: Clone selected DSH host
+      - name: Resolve latest DSH tag
+        id: host
+        run: echo "ref=$(node scripts/resolve-dsh-tag.mjs)" >> "$GITHUB_OUTPUT"
+
+      - name: Clone latest DSH host
         shell: bash
         run: |
           DSH_ROOT="$GITHUB_WORKSPACE/../../.dsh/source/current"
           mkdir -p "$(dirname "$DSH_ROOT")"
-          git clone --depth 1 --branch "$HOST_REF" https://github.com/deepseek-ai/deepseek-harness.git "$DSH_ROOT"
+          git clone --depth 1 --branch "${{ steps.host.outputs.ref }}" https://github.com/deepseek-ai/deepseek-harness.git "$DSH_ROOT"
           echo "DSH_ROOT=$DSH_ROOT" >> "$GITHUB_ENV"
+          echo "Resolved DSH host ${{ steps.host.outputs.ref }}"
 
       - name: Install and build DSH host
         working-directory: ${{ github.workspace }}/../../.dsh/source/current
