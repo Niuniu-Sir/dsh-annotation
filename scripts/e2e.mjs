@@ -160,13 +160,18 @@ try {
     const later = page.getByRole('button', { name: '稍后配置', exact: true })
     if (await later.isVisible()) await later.click()
     async function openFile() {
-      const expand = page.getByRole('button', { name: '打开右侧边栏', exact: true })
+      // Reload can leave the session list focused; the right sidebar belongs to the open session.
+      const session = page.getByText('文件批注验收', { exact: true }).first()
+      if (await session.isVisible()) await session.click()
+      const expand = page.locator('[data-sidebar-right-expand]')
       if (await expand.isVisible()) await expand.click()
-      if (!await page.locator('[data-sidebar-right-guide-entry="files"]').isVisible()) {
-        await page.getByRole('button', { name: '新标签页', exact: true }).click()
+      const files = page.locator('[data-sidebar-right-guide-entry="files"]')
+      if (!(await files.isVisible())) {
+        // A fresh pane has no guide yet; the strip's add control opens one.
+        await page.locator('[data-dockkit-add-tab]').first().click()
       }
-      await page.getByText('工作区文件', { exact: true }).click()
-      await page.locator('[data-files-entry="file"][data-files-path$="/README.zh-CN.md"] button').click()
+      await files.click()
+      await page.locator('[data-files-entry="file"][data-files-path$="/README.zh-CN.md"] > button').click()
       await page.locator('[data-document-markdown] p').first().waitFor({ state: 'visible' })
     }
     await openFile()
