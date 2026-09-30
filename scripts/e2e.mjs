@@ -201,7 +201,7 @@ try {
     await page.locator('.dsh-ann-num').waitFor({ state: 'visible' })
     await page.locator('.dsh-ann-num').click()
     if (await page.locator('.dsh-ann-input').inputValue() !== '请解释这个文件段落') fail('文件批注刷新恢复失败')
-    await page.locator('.dsh-ann-card-head button').click()
+    await page.locator('.dsh-ann-card-head > .dsh-ann-icon').click()
     if (pageErrors.length > 0) fail(`侧边栏异常: ${pageErrors.join(' | ')}`)
     console.log('PASS 真实侧边栏打开工作区文件、选区、来源路径、保存、刷新后重新打开定位、重新编辑')
   }
