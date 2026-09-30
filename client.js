@@ -210,6 +210,7 @@ window.__ModuleLoader__.load({
         toast: {
           attachFail: '批注拼稿失败，消息将不带批注发送：',
           skipCommand: '本条是斜杠命令，未拼入批注；批注已保留，将随下一条消息发送',
+          noSession: '无法确定当前会话，批注未拼入（已保留，将随下一条消息重试）',
         },
         block: {
           head: '我批注了以下 {n} 处内容（编号与原文对应），请针对它们回答我的问题：',
@@ -246,6 +247,7 @@ window.__ModuleLoader__.load({
         toast: {
           attachFail: 'Failed to attach annotations; the message will be sent without them: ',
           skipCommand: 'Slash command detected — annotations stay pending and will attach to your next message',
+          noSession: 'Cannot determine the current session; annotations kept pending and will retry with your next message',
         },
         block: {
           head: 'I annotated the following {n} passage(s) (the numbers match the quotes below); please respond to them when answering my question:',
@@ -922,13 +924,22 @@ window.__ModuleLoader__.load({
     function apply(ctx) {
       var sessions = ctx.sessions
 
-      // ---------- 当前会话 id 的跨版本读取 ----------
-      // DSH 0.1.7 起 `sessions.list` 快照不再暴露 `current`（selection 收进
-      // ClientSessions 私有 selection），改由 ui-session 服务的
-      // `adapter.current`（HostObservable<binding>，binding.key = sessionId）
-      // 发布。旧版两条路都在，故这里以 uiSession 优先、list.current 兜底：
-      // 若只认旧字段，0.1.7+ 上 current 恒为 undefined，attachAndSend 第一行
-      // 就 return false —— 表现为「有批注、标签也在，但回车/发送按钮都没反应」。
+      // ---------- 当前会话 id 的跨版本解析（覆盖 DSH 0.1.1 ~ 0.2.0-rc.2）----------
+      // 优先级（自上而下，命中即返回）：
+      // ① uiSession 服务的 `adapter.current`（HostObservable<binding>，binding.key =
+      //    sessionId）—— 0.1.7 起的公开选中态：selection 收进 ClientSessions 私有
+      //    selection，list 快照不再带 current。已对照 0.1.7-rc.2 与 0.2.0-rc.2 内核
+      //    源码核实（packages/client/ui-session/src/client/index.ts:312 起暴露）。
+      // ② `localStorage['dsh.sessions.current'].sessionId` —— 内核 workspace 服务
+      //    持久化的选择态（`createSnapshotStore({}, { persist: { name: ... } })`，
+      //    写入形状 `{ sessionId }`，会话归档时由内核 clearArchivedCurrent 自行清理）。
+      //    0.1.6-alpha.2 ~ 0.1.6 上这是唯一真实可用的路径（#68 的考证）。
+      // ③ list 快照上的 `current` —— 0.1.6-alpha.2 之前的宿主，该字段是精确选中值。
+      // ④ list 行上的 `retainedBy.mainView > 0` —— 公开成员，兜底「尚未落盘 / 存储
+      //    被清」的场景。它是「主视图 retain 的会话」而非选中值：内核自己也只在
+      //    id 未知时才用它猜，故排在精确值之后。
+      // （曾挂在 sessions 服务上的 `currentProvideInfo` 只存在于旧源码线
+      // packages/client/runtime，上游现契约已无此成员，不再尝试。）
       var uiSessionService = null
 
       /** ui-session 服务（惰性探测：apply 时机早于它注册时下次再取）。 */
@@ -939,6 +950,7 @@ window.__ModuleLoader__.load({
         return uiSessionService
       }
 
+      /** ① 命中时返回可订阅的选中态源（HostObservable），否则 null。 */
       function currentSessionSource() {
         try {
           var face = uiSessionFace()
@@ -946,24 +958,45 @@ window.__ModuleLoader__.load({
           var source = adapter !== undefined && adapter !== null ? adapter.current : undefined
           if (source !== undefined && source !== null
             && typeof source.getSnapshot === 'function' && typeof source.subscribe === 'function') return source
-        } catch (_) { /* 旧版内核：退回 list store */ }
-        return sessions.list
+        } catch (_) { /* 旧版内核：无 uiSession */ }
+        return null
       }
 
       function readCurrentSessionId() {
         try {
-          var face = uiSessionFace()
-          var adapter = face !== null ? face.adapter : undefined
-          var source = adapter !== undefined && adapter !== null ? adapter.current : undefined
-          if (source !== undefined && source !== null && typeof source.getSnapshot === 'function') {
+          var source = currentSessionSource()
+          if (source !== null) {
             var binding = source.getSnapshot()
             if (binding !== undefined && binding !== null && binding.key !== undefined) return binding.key
           }
-        } catch (_) { /* 旧版内核：退回 list store */ }
+        } catch (_) { /* 落到下一级 */ }
+        try {
+          if (typeof localStorage !== 'undefined') {
+            var raw = localStorage.getItem('dsh.sessions.current')
+            if (raw !== null) {
+              var parsed = JSON.parse(raw)
+              if (parsed !== null && typeof parsed === 'object'
+                && typeof parsed.sessionId === 'string' && parsed.sessionId !== '') return parsed.sessionId
+            }
+          }
+        } catch (_) { /* 落到下一级 */ }
         try {
           var snap = sessions.list.getSnapshot()
-          return snap !== undefined && snap !== null ? snap.current : undefined
-        } catch (_) { return undefined }
+          if (snap !== undefined && snap !== null) {
+            if (typeof snap.current === 'string' && snap.current !== '') return snap.current
+            var byId = snap.byId
+            if (byId !== undefined && byId !== null && typeof byId === 'object') {
+              var ids = Array.isArray(snap.ids) ? snap.ids : Object.keys(byId)
+              for (var i = 0; i < ids.length; i++) {
+                var retained = byId[ids[i]] !== undefined && byId[ids[i]] !== null
+                  ? byId[ids[i]].retainedBy : null
+                if (retained !== null && typeof retained === 'object'
+                  && typeof retained.mainView === 'number' && retained.mainView > 0) return ids[i]
+              }
+            }
+          }
+        } catch (_) { /* 落到下一级 */ }
+        return undefined
       }
 
       var host = document.createElement('div')
@@ -1123,7 +1156,8 @@ window.__ModuleLoader__.load({
         var key = selectionKey(sel)
         var rootEl = annotationRootOf(range.commonAncestorContainer)
         var source = documentSourceOf(range.commonAncestorContainer)
-        if (source !== null && source.sessionId !== readCurrentSessionId()) rootEl = null
+        var selSessionId = readCurrentSessionId()
+        if (source !== null && selSessionId !== undefined && source.sessionId !== selSessionId) rootEl = null
         if (rootEl === null) { clearSettle(); closeToolbar(); return }
         if (ui.mode === 'actions' && key === ui.lastKey && text === ui.quote && rootEl === ui.selectionRoot
           && (ui.source && ui.source.sourceUrl) === (source && source.sourceUrl)) { clearSettle(); return }
@@ -1136,8 +1170,9 @@ window.__ModuleLoader__.load({
           var r = s.getRangeAt(0)
           if (annotationRootOf(r.commonAncestorContainer) !== rootEl) return
           var currentSource = documentSourceOf(r.commonAncestorContainer)
+          var settleSessionId = readCurrentSessionId()
           if ((currentSource && currentSource.sourceUrl) !== (source && source.sourceUrl)
-            || (source !== null && source.sessionId !== readCurrentSessionId())) return
+            || (source !== null && settleSessionId !== undefined && source.sessionId !== settleSessionId)) return
           var rect = r.getBoundingClientRect()
           if (rect.width === 0 || rect.height === 0) return
           var p = placeAbove(rect, 40)
@@ -1299,9 +1334,15 @@ window.__ModuleLoader__.load({
 
       function submitAttached() {
         var current = readCurrentSessionId()
-        if (current === undefined) return
+        if (current === undefined) {
+          console.warn('[annotation] 无法确定当前会话，批注直接提交已跳过')
+          return
+        }
         var scoped = sessions.scope(current)
-        if (scoped === undefined) return
+        if (scoped === undefined) {
+          console.warn('[annotation] 当前会话 scope 不可用，批注直接提交已跳过')
+          return
+        }
         try {
           ctx.conversation.input.for(scoped).submit('queue')
         } catch (err) {
@@ -1765,10 +1806,18 @@ window.__ModuleLoader__.load({
        *  返回 true 表示批注块已在草稿中（本次刚拼入，或之前已拼入未发送）。 */
       function attachAndSend(e) {
         var current = readCurrentSessionId()
-        if (current === undefined) return false
+        if (current === undefined) {
+          console.warn('[annotation] 无法确定当前会话，批注未拼入草稿')
+          showToast(t('toast.noSession'))
+          return false
+        }
         try {
           var scoped = sessions.scope(current)
-          if (scoped === undefined) return false
+          if (scoped === undefined) {
+            console.warn('[annotation] 当前会话 scope 不可用，批注未拼入草稿')
+            showToast(t('toast.noSession'))
+            return false
+          }
           var shell = ctx.conversation.input.for(scoped)
           var st = shell.state.getSnapshot()
           var draft = st.draft || ''
@@ -2081,6 +2130,10 @@ window.__ModuleLoader__.load({
       function watchInputDraft() {
         if (inputWatchTimer !== null) { clearInterval(inputWatchTimer); inputWatchTimer = null }
         if (typeof inputUnsub === 'function') { inputUnsub(); inputUnsub = null }
+        // 会话切换时旧 scope 的订阅由上层先释放，这里只负责挂上当前会话；
+        // 切换后若 scope 尚不可用，仍靠下方的 1s 重试补齐（同 watchInputDraft 原有语义）。
+        // 注意：切换后必须重新订阅新会话的草稿，否则“草稿有→空”的发送清空权威会
+        // 继续监听旧会话，新会话发送后待发送批注永远不清（每次 Enter 重复拼稿）。
         var id = readCurrentSessionId()
         if (id !== undefined && tryWatchInputDraft(id)) return
         inputWatchTimer = setInterval(function () {
@@ -2503,11 +2556,15 @@ window.__ModuleLoader__.load({
       }
 
       // ---------- 待发送批注按会话恢复 ----------
+      // 0.1.6-alpha.2 起选择态已移出 list store：list.subscribe 不再于会话切换时触发。
+      // 切换检测三层并行（onSessionSwitch 幂等，重复触发无害）：
+      // ① uiSession 的 current source（0.1.7+ 精确；uiSession 晚于插件注册时，
+      //    onSessionSwitch 内的惰性探测仍能读到，订阅缺口由轮询兜底）；
+      // ② list.subscribe（0.1.6-alpha.2 之前的宿主精确）；
+      // ③ 1s 轮询（新宿主上 ② 永不触发、① 缺席时它是唯一触发点）。
       var lastSessionId = readCurrentSessionId()
       ui.quotes = readPendingQuotes(lastSessionId)
-      // 会话切换：0.1.7 起 selection 变化不再写进 list 快照，必须订阅
-      // ui-session 的 current source，否则切会话时待发送批注不会跟着切换。
-      var unsub = currentSessionSource().subscribe(function () {
+      function onSessionSwitch() {
         var cur = readCurrentSessionId()
         if (cur === lastSessionId) return
         writePendingQuotes(lastSessionId)
@@ -2523,7 +2580,27 @@ window.__ModuleLoader__.load({
         updateChip()
         watchInputDraft()
         renderMarkers()
-      })
+      }
+      var unsubList = null
+      var unsubSession = null
+      var switchTimer = null
+      try {
+        if (sessions.list !== undefined && sessions.list !== null
+          && typeof sessions.list.subscribe === 'function') {
+          unsubList = sessions.list.subscribe(onSessionSwitch)
+        }
+      } catch (_) { unsubList = null }
+      try {
+        var uiSource = currentSessionSource()
+        if (uiSource !== null) unsubSession = uiSource.subscribe(onSessionSwitch)
+      } catch (_) { unsubSession = null }
+      switchTimer = setInterval(onSessionSwitch, 1000)
+      function unsubSessionSwitch() {
+        try { if (typeof unsubList === 'function') unsubList() } catch (_) { /* ignore */ }
+        try { if (typeof unsubSession === 'function') unsubSession() } catch (_) { /* ignore */ }
+        if (switchTimer !== null) { clearInterval(switchTimer); switchTimer = null }
+      }
+      var unsub = unsubSessionSwitch
 
       watchInputDraft()
       kickDecorate()
