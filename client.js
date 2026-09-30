@@ -2,7 +2,9 @@
 //
 // 手写 CJS + ModuleLoader 包装（同 omdsh-dev navbar/greeter 模式，零构建
 // 步骤）：纯 DOM 自渲染，无任何 @deepseek-ai 值导入（bundle purity gate 合规）；
-// cordis 服务经 exports.inject 的字符串名接入（sessions / conversation / locale）。
+// cordis 服务经 exports.inject 的字符串名接入（sessions / conversation /
+// locale / uiSession——uiSession 用于读取「当前会话 id」：DSH 0.1.7 起
+// sessions.list 快照不再带 current，见 apply 内的 readCurrentSessionId）。
 //
 // v1.4.x · 自包含批注流（取代 v0.9 chip 设计与 v1.0 发送面板）：
 //   1. 选中助手文字 → 工具条「批注」→ 写批注（可留空 = 仅标记原文）
@@ -60,6 +62,7 @@ window.__ModuleLoader__.load({
         '  gap: 2px; padding: 4px; border-radius: 12px;',
         '  border: 1px solid var(--dsw-alias-border-inverted);',
         '  background: var(--dsw-specific-menu, #2c2c2e);',
+        '  background: color-mix(in srgb, var(--dsw-specific-menu, #2c2c2e) 94%, transparent);',
         '  box-shadow: var(--dsw-shadow-lv3);',
         '  font-family: var(--dsw-font-family, system-ui);',
         '  animation: dsh-ann-pop .12s var(--ds-ease-in-out, ease); }',
@@ -90,6 +93,7 @@ window.__ModuleLoader__.load({
         '  max-width: calc(100vw - 16px); padding: 12px; border-radius: 12px;',
         '  border: 1px solid var(--dsw-alias-border-inverted);',
         '  background: var(--dsw-specific-menu, #2c2c2e);',
+        '  background: color-mix(in srgb, var(--dsw-specific-menu, #2c2c2e) 94%, transparent);',
         '  box-shadow: var(--dsw-shadow-lv3);',
         '  font-family: var(--dsw-font-family, system-ui);',
         '  animation: dsh-ann-pop .12s var(--ds-ease-in-out, ease); }',
@@ -97,6 +101,7 @@ window.__ModuleLoader__.load({
         '  margin-bottom: 8px; cursor: move; touch-action: none; user-select: none; }',
         '.dsh-ann-card-title { font-size: 13px; font-weight: 600;',
         '  color: var(--dsw-alias-label-primary); }',
+        '.dsh-ann-card-headmain { display: flex; align-items: center; gap: 2px; min-width: 0; }',
         '.dsh-ann-quote { font-size: 12px; line-height: 1.55;',
         '  color: var(--dsw-alias-label-tertiary);',
         '  border-left: 2px solid var(--dsw-alias-border-inverted);',
@@ -135,11 +140,6 @@ window.__ModuleLoader__.load({
         '.dsh-ann-input:focus { border-color: var(--dsw-alias-text-accent, #4c9aff); }',
         '.dsh-ann-input::placeholder { color: var(--dsw-alias-label-dimmed); }',
         '.dsh-ann-row { display: flex; gap: 8px; margin-top: 10px; justify-content: flex-end; }',
-        '.dsh-ann-cancel { display: inline-flex; align-items: center; height: 28px; padding: 0 12px;',
-        '  border: 1px solid var(--dsw-alias-border-l2); border-radius: 14px;',
-        '  background: transparent; color: var(--dsw-alias-label-primary);',
-        '  font-family: inherit; font-size: 12px; cursor: pointer; }',
-        '.dsh-ann-cancel:hover { background: var(--dsw-alias-interactive-bg-hover); }',
         '.dsh-ann-error { color: var(--dsw-alias-state-error-primary, #ff7a7a);',
         '  font-size: 12px; margin-top: 8px; word-break: break-word; }',
         '.dsh-ann-hl { position: fixed; z-index: 900; background: rgba(255, 195, 0, .15);',
@@ -152,8 +152,28 @@ window.__ModuleLoader__.load({
         '  box-shadow: 0 1px 4px rgba(0,0,0,.35); pointer-events: auto; cursor: pointer;',
         '  transition: filter .12s ease; }',
         '.dsh-ann-num:hover { filter: brightness(1.15); }',
-        'body:has([role="dialog"][aria-modal="true"]) [data-annotation-overlay] { display: none; }',
+        'body:has([role="dialog"][aria-modal="true"]) [data-annotation-overlay],',
+        'body:has([role="dialog"][aria-modal="true"]) [data-annotation-num-layer] { display: none; }',
         '.dsh-ann-tip { animation: dsh-ann-pop .12s var(--ds-ease-in-out, ease); }',
+        // 默认沿用带 0.94 alpha 的菜单色：悬浮在正文上时能看穿下面的文字（双赢）；
+        // 鼠标移进去才换成不透明的主题底色，方便专心读批注内容。内联样式优先级
+        // 更高，所以这里必须 !important。
+        '.dsh-ann-tip:hover,',
+        '[data-annotation-reply-chip]:hover,',
+        '[data-annotation-bubble-tag]:hover,',
+        '[data-annotation-chip]:hover,',
+        '.dsh-ann-bar:hover,',
+        '.dsh-ann-card:hover,',
+        '[data-annotation-toast]:hover {',
+        '  background: var(--dsw-alias-bg-layer-2, var(--dsw-alias-bg-base, #2c2c2e)) !important; }',
+        // 半透明 ↔ 不透明之间过渡一下，鼠标进出时不会「啪」地闪一下。
+        '.dsh-ann-tip,',
+        '[data-annotation-reply-chip],',
+        '[data-annotation-bubble-tag],',
+        '[data-annotation-chip],',
+        '.dsh-ann-bar,',
+        '.dsh-ann-card,',
+        '[data-annotation-toast] { transition: background-color .15s ease; }',
         '@keyframes dsh-ann-fadein { from { opacity: 0; } to { opacity: 1; } }',
       ].join('\n')
       document.head.appendChild(style)
@@ -176,6 +196,7 @@ window.__ModuleLoader__.load({
           editTitle: '编辑批注',
           placeholder: '写下批注…（可留空，保存后仅标记原文）',
           save: '保存批注',
+          delete: '删除这条批注',
         },
         common: { cancel: '取消' },
         error: { noSelection: '没有选中的内容' },
@@ -184,13 +205,12 @@ window.__ModuleLoader__.load({
         bubble: { tag: '批注 ×{n}', title: '本消息携带批注（{n} 条）' },
         reply: {
           headWithQuote: '批注 {n} 的原文',
-          headNoQuote: '批注 {n}',
           notePrefix: '你的批注：',
-          missing: '（未找到对应批注条目）',
         },
         toast: {
           attachFail: '批注拼稿失败，消息将不带批注发送：',
           skipCommand: '本条是斜杠命令，未拼入批注；批注已保留，将随下一条消息发送',
+          noSession: '无法确定当前会话，批注未拼入（已保留，将随下一条消息重试）',
         },
         block: {
           head: '我批注了以下 {n} 处内容（编号与原文对应），请针对它们回答我的问题：',
@@ -213,6 +233,7 @@ window.__ModuleLoader__.load({
           editTitle: 'Edit annotation',
           placeholder: 'Write a note… (optional; saving only marks the passage)',
           save: 'Save annotation',
+          delete: 'Delete this annotation',
         },
         common: { cancel: 'Cancel' },
         error: { noSelection: 'No text selected' },
@@ -221,13 +242,12 @@ window.__ModuleLoader__.load({
         bubble: { tag: 'Annotations ×{n}', title: 'This message carries {n} annotation(s)' },
         reply: {
           headWithQuote: 'Source of annotation {n}',
-          headNoQuote: 'Annotation {n}',
           notePrefix: 'Your note: ',
-          missing: '(no matching annotation found)',
         },
         toast: {
           attachFail: 'Failed to attach annotations; the message will be sent without them: ',
           skipCommand: 'Slash command detected — annotations stay pending and will attach to your next message',
+          noSession: 'Cannot determine the current session; annotations kept pending and will retry with your next message',
         },
         block: {
           head: 'I annotated the following {n} passage(s) (the numbers match the quotes below); please respond to them when answering my question:',
@@ -904,6 +924,81 @@ window.__ModuleLoader__.load({
     function apply(ctx) {
       var sessions = ctx.sessions
 
+      // ---------- 当前会话 id 的跨版本解析（覆盖 DSH 0.1.1 ~ 0.2.0-rc.2）----------
+      // 优先级（自上而下，命中即返回）：
+      // ① uiSession 服务的 `adapter.current`（HostObservable<binding>，binding.key =
+      //    sessionId）—— 0.1.7 起的公开选中态：selection 收进 ClientSessions 私有
+      //    selection，list 快照不再带 current。已对照 0.1.7-rc.2 与 0.2.0-rc.2 内核
+      //    源码核实（packages/client/ui-session/src/client/index.ts:312 起暴露）。
+      // ② `localStorage['dsh.sessions.current'].sessionId` —— 内核 workspace 服务
+      //    持久化的选择态（`createSnapshotStore({}, { persist: { name: ... } })`，
+      //    写入形状 `{ sessionId }`，会话归档时由内核 clearArchivedCurrent 自行清理）。
+      //    0.1.6-alpha.2 ~ 0.1.6 上这是唯一真实可用的路径（#68 的考证）。
+      // ③ list 快照上的 `current` —— 0.1.6-alpha.2 之前的宿主，该字段是精确选中值。
+      // ④ list 行上的 `retainedBy.mainView > 0` —— 公开成员，兜底「尚未落盘 / 存储
+      //    被清」的场景。它是「主视图 retain 的会话」而非选中值：内核自己也只在
+      //    id 未知时才用它猜，故排在精确值之后。
+      // （曾挂在 sessions 服务上的 `currentProvideInfo` 只存在于旧源码线
+      // packages/client/runtime，上游现契约已无此成员，不再尝试。）
+      var uiSessionService = null
+
+      /** ui-session 服务（惰性探测：apply 时机早于它注册时下次再取）。 */
+      function uiSessionFace() {
+        if (uiSessionService === null) {
+          try { uiSessionService = ctx.get('uiSession') || null } catch (_) { uiSessionService = null }
+        }
+        return uiSessionService
+      }
+
+      /** ① 命中时返回可订阅的选中态源（HostObservable），否则 null。 */
+      function currentSessionSource() {
+        try {
+          var face = uiSessionFace()
+          var adapter = face !== null ? face.adapter : undefined
+          var source = adapter !== undefined && adapter !== null ? adapter.current : undefined
+          if (source !== undefined && source !== null
+            && typeof source.getSnapshot === 'function' && typeof source.subscribe === 'function') return source
+        } catch (_) { /* 旧版内核：无 uiSession */ }
+        return null
+      }
+
+      function readCurrentSessionId() {
+        try {
+          var source = currentSessionSource()
+          if (source !== null) {
+            var binding = source.getSnapshot()
+            if (binding !== undefined && binding !== null && binding.key !== undefined) return binding.key
+          }
+        } catch (_) { /* 落到下一级 */ }
+        try {
+          if (typeof localStorage !== 'undefined') {
+            var raw = localStorage.getItem('dsh.sessions.current')
+            if (raw !== null) {
+              var parsed = JSON.parse(raw)
+              if (parsed !== null && typeof parsed === 'object'
+                && typeof parsed.sessionId === 'string' && parsed.sessionId !== '') return parsed.sessionId
+            }
+          }
+        } catch (_) { /* 落到下一级 */ }
+        try {
+          var snap = sessions.list.getSnapshot()
+          if (snap !== undefined && snap !== null) {
+            if (typeof snap.current === 'string' && snap.current !== '') return snap.current
+            var byId = snap.byId
+            if (byId !== undefined && byId !== null && typeof byId === 'object') {
+              var ids = Array.isArray(snap.ids) ? snap.ids : Object.keys(byId)
+              for (var i = 0; i < ids.length; i++) {
+                var retained = byId[ids[i]] !== undefined && byId[ids[i]] !== null
+                  ? byId[ids[i]].retainedBy : null
+                if (retained !== null && typeof retained === 'object'
+                  && typeof retained.mainView === 'number' && retained.mainView > 0) return ids[i]
+              }
+            }
+          }
+        } catch (_) { /* 落到下一级 */ }
+        return undefined
+      }
+
       var host = document.createElement('div')
       host.setAttribute('data-annotation-for-dsh', '')
       document.body.appendChild(host)
@@ -911,6 +1006,16 @@ window.__ModuleLoader__.load({
       overlay.setAttribute('data-annotation-overlay', '')
       overlay.style.cssText = 'position:fixed;inset:0;pointer-events:none;z-index:900;'
       document.body.appendChild(overlay)
+
+      // 编号单独成层：overlay 是 z-index 900 的 stacking context，编号挂在里面
+      // 只能跟着它走——既会被宿主里层级更高的内容压住，也会被输入框/头部的
+      // 裁剪一起切掉（表现为「滚到输入框上就不显示」）。分层之后编号有自己
+      // 统一的层级（1100，仍低于胶囊/菜单层），不随宿主文档结构变化，也不再
+      // 参与标记层的裁剪。
+      var numLayer = document.createElement('div')
+      numLayer.setAttribute('data-annotation-num-layer', '')
+      numLayer.style.cssText = 'position:fixed;inset:0;pointer-events:none;z-index:1100;'
+      document.body.appendChild(numLayer)
 
       var ui = {
         mode: 'closed',      // closed | actions | editing | composing
@@ -948,7 +1053,7 @@ window.__ModuleLoader__.load({
       }
 
       function writeCurrentPendingQuotes() {
-        writePendingQuotes(sessions.list.getSnapshot().current)
+        writePendingQuotes(readCurrentSessionId())
       }
 
       var ignoreUntil = 0
@@ -1002,7 +1107,7 @@ window.__ModuleLoader__.load({
           var el = document.createElement('div')
           el.setAttribute('data-annotation-toast', '')
           el.textContent = msg
-          el.style.cssText = 'position:fixed;z-index:1300;left:50%;bottom:88px;transform:translateX(-50%);max-width:min(420px,calc(100vw - 24px));padding:8px 14px;border-radius:10px;background:var(--dsw-specific-menu,#2c2c2e);border:1px solid var(--dsw-alias-border-inverted);box-shadow:var(--dsw-shadow-lv3);color:var(--dsw-alias-label-primary);font-family:var(--dsw-font-family,system-ui);font-size:12px;pointer-events:none;'
+          el.style.cssText = 'position:fixed;z-index:1300;left:50%;bottom:88px;transform:translateX(-50%);max-width:min(420px,calc(100vw - 24px));padding:8px 14px;border-radius:10px;background:var(--dsw-specific-menu, #2c2c2e);background:color-mix(in srgb, var(--dsw-specific-menu, #2c2c2e) 94%, transparent);border:1px solid var(--dsw-alias-border-inverted);box-shadow:var(--dsw-shadow-lv3);color:var(--dsw-alias-label-primary);font-family:var(--dsw-font-family,system-ui);font-size:12px;pointer-events:none;'
           document.body.appendChild(el)
           if (toastTimer !== null) clearTimeout(toastTimer)
           toastTimer = setTimeout(function () {
@@ -1036,12 +1141,13 @@ window.__ModuleLoader__.load({
         var ancEl = anc instanceof Element ? anc : (anc && anc.parentElement)
         if (ancEl !== null && ancEl.closest) {
           if (ancEl.closest('[data-annotation-for-dsh]') || ancEl.closest('[data-annotation-overlay]')
+            || ancEl.closest('[data-annotation-num-layer]')
             || ancEl.closest('[data-composer-card]') || ancEl.closest('[data-input-scroll]')) {
             clearSettle()
             return
           }
         }
-        if (host.contains(anc) || overlay.contains(anc)) {
+        if (host.contains(anc) || overlay.contains(anc) || numLayer.contains(anc)) {
           clearSettle()
           return
         }
@@ -1050,7 +1156,8 @@ window.__ModuleLoader__.load({
         var key = selectionKey(sel)
         var rootEl = annotationRootOf(range.commonAncestorContainer)
         var source = documentSourceOf(range.commonAncestorContainer)
-        if (source !== null && source.sessionId !== sessions.list.getSnapshot().current) rootEl = null
+        var selSessionId = readCurrentSessionId()
+        if (source !== null && selSessionId !== undefined && source.sessionId !== selSessionId) rootEl = null
         if (rootEl === null) { clearSettle(); closeToolbar(); return }
         if (ui.mode === 'actions' && key === ui.lastKey && text === ui.quote && rootEl === ui.selectionRoot
           && (ui.source && ui.source.sourceUrl) === (source && source.sourceUrl)) { clearSettle(); return }
@@ -1063,8 +1170,9 @@ window.__ModuleLoader__.load({
           var r = s.getRangeAt(0)
           if (annotationRootOf(r.commonAncestorContainer) !== rootEl) return
           var currentSource = documentSourceOf(r.commonAncestorContainer)
+          var settleSessionId = readCurrentSessionId()
           if ((currentSource && currentSource.sourceUrl) !== (source && source.sourceUrl)
-            || (source !== null && source.sessionId !== sessions.list.getSnapshot().current)) return
+            || (source !== null && settleSessionId !== undefined && source.sessionId !== settleSessionId)) return
           var rect = r.getBoundingClientRect()
           if (rect.width === 0 || rect.height === 0) return
           var p = placeAbove(rect, 40)
@@ -1157,6 +1265,7 @@ window.__ModuleLoader__.load({
           if (el === null || !el.closest) return true
           if (el.closest('[data-composer-card]') || el.closest('[data-input-scroll]')
             || el.closest('[data-annotation-for-dsh]') || el.closest('[data-annotation-overlay]')
+            || el.closest('[data-annotation-num-layer]')
             || el.closest('[data-annotation-chip]') || el.closest('[data-annotation-tip-layer]')) {
             continue
           }
@@ -1180,7 +1289,7 @@ window.__ModuleLoader__.load({
           if (mutations[i].type === 'childList') { hasRowInsert = true; break }
         }
         if (hasRowInsert) {
-          decorateAll()
+          scheduleDecorateAll()
           return
         }
         // 流式批次: 只做助手回复芯片的限流装饰(行内 data-streaming 守卫已保证
@@ -1224,10 +1333,16 @@ window.__ModuleLoader__.load({
       document.addEventListener('keydown', onKeyDown, true)
 
       function submitAttached() {
-        var current = sessions.list.getSnapshot().current
-        if (current === undefined) return
+        var current = readCurrentSessionId()
+        if (current === undefined) {
+          console.warn('[annotation] 无法确定当前会话，批注直接提交已跳过')
+          return
+        }
         var scoped = sessions.scope(current)
-        if (scoped === undefined) return
+        if (scoped === undefined) {
+          console.warn('[annotation] 当前会话 scope 不可用，批注直接提交已跳过')
+          return
+        }
         try {
           ctx.conversation.input.for(scoped).submit('queue')
         } catch (err) {
@@ -1315,10 +1430,28 @@ window.__ModuleLoader__.load({
           var head = document.createElement('div')
           head.className = 'dsh-ann-card-head'
           makeEditorDraggable(head, card)
+          var headMain = document.createElement('div')
+          headMain.className = 'dsh-ann-card-headmain'
           var title = document.createElement('div')
           title.className = 'dsh-ann-card-title'
           title.textContent = ui.editingId !== null ? t('edit.editTitle') : t('edit.addTitle')
-          head.appendChild(title)
+          headMain.appendChild(title)
+          // 编辑已有批注时，标题右侧紧邻一个删除按钮（新增批注没有可删对象）。
+          if (ui.editingId !== null) {
+            var editingId = ui.editingId
+            var del = document.createElement('button')
+            del.type = 'button'
+            del.className = 'dsh-ann-qdel'
+            del.title = t('edit.delete')
+            del.setAttribute('aria-label', t('edit.delete'))
+            del.appendChild(ICONS.trash())
+            del.addEventListener('click', function () {
+              closeToolbar()
+              removeQuote(editingId)
+            })
+            headMain.appendChild(del)
+          }
+          head.appendChild(headMain)
           head.appendChild(iconButton('dsh-ann-icon', ICONS.close, t('common.cancel'), closeToolbar))
           card.appendChild(head)
           var quote = document.createElement('div')
@@ -1338,18 +1471,12 @@ window.__ModuleLoader__.load({
           card.appendChild(ta)
           var row = document.createElement('div')
           row.className = 'dsh-ann-row'
-          var cancel = document.createElement('button')
-          cancel.className = 'dsh-ann-cancel'
-          cancel.type = 'button'
-          cancel.textContent = t('common.cancel')
-          cancel.addEventListener('click', closeToolbar)
           var save = document.createElement('button')
           save.type = 'button'
           save.className = 'dsh-ann-action'
           save.appendChild(ICONS.check())
           save.appendChild(document.createTextNode(t('edit.save')))
           save.addEventListener('click', saveAnnotation)
-          row.appendChild(cancel)
           row.appendChild(save)
           card.appendChild(row)
           if (ui.error !== null) {
@@ -1394,7 +1521,7 @@ window.__ModuleLoader__.load({
 
       // ---------- 批注标记 ----------
       var markersSig = null
-      function markersSignature() {
+      function markersSignature(blockers) {
         var parts = []
         for (var i = 0; i < ui.quotes.length; i++) {
           var q = ui.quotes[i]
@@ -1408,23 +1535,76 @@ window.__ModuleLoader__.load({
           }
           if (rects.length > 0) parts.push(q.id + ':chip')
         }
+        // 遮挡区（输入框 + 会话头部）也进签名：它们改变时编号必须重走
+        // 让位/隐藏，否则旧位置会被裁剪成半截残影。
+        for (var b = 0; b < blockers.length; b++) {
+          var br = blockers[b]
+          parts.push('b:' + Math.round(br.left) + ',' + Math.round(br.top) + ',' + Math.round(br.width) + ',' + Math.round(br.height))
+        }
         return parts.join('|')
       }
 
-      function renderMarkers() {
-        // 对整个标记层挖去输入框区域；滚动、尺寸变化时即使原文没动也要刷新。
-        var composer = document.querySelector('[data-composer-card]')
-        var r = composer !== null ? composer.getBoundingClientRect() : null
-        overlay.style.clipPath = r !== null && r.width > 0 && r.height > 0
-          ? 'polygon(evenodd, 0 0, 100% 0, 100% 100%, 0 100%, 0 0, '
-            + r.left + 'px ' + r.top + 'px, ' + r.right + 'px ' + r.top + 'px, '
+      /** 按 CSS Modules local 名取宿主元素的可见矩形：类名形如 `wSkVaW_header`
+       *  （哈希前缀随版本变），故认「以 _<local> 收尾的 class token」，
+       *  headerActions / composerSeatInner 这类同前缀兄弟名不会被误认。 */
+      function hostLocalRects(local) {
+        var out = []
+        var found = document.querySelectorAll('[class*="_' + local + '"]')
+        var re = new RegExp('(^|\\s)[^\\s]*_' + local + '(\\s|$)')
+        for (var i = 0; i < found.length; i++) {
+          var cls = found[i].getAttribute('class') || ''
+          if (!re.test(cls)) continue
+          var r = found[i].getBoundingClientRect()
+          if (r.width <= 0 || r.height <= 0) continue
+          if (r.bottom <= 0 || r.top >= window.innerHeight) continue
+          out.push(r)
+        }
+        return out
+      }
+
+      /** 会盖住会话内容的宿主头部：标记层是 fixed 定位，原生绘制顺序上恒在
+       *  头部之上——只有把头部区域从标记层裁掉，编号与高亮才会像会话内容
+       *  一样被头部遮住。 */
+      function hostHeaderRects() {
+        return hostLocalRects('header')
+      }
+
+      /** 输入区（整块 composer 容器，含输入卡片与下方统计行）——不是单个
+       *  `[data-composer-card]`：卡片下方那段同样被容器盖住，编号落在那里
+       *  会像「显示在对话区下面」。找不到容器时退回输入卡片。 */
+      function hostComposerRects() {
+        var rects = hostLocalRects('composerSeat')
+        if (rects.length > 0) return rects
+        var card = document.querySelector('[data-composer-card]')
+        if (card === null) return []
+        var r = card.getBoundingClientRect()
+        return r.width > 0 && r.height > 0 ? [r] : []
+      }
+
+      /** 外框保留、逐个矩形挖空（evenodd）：标记层的裁剪路径。 */
+      function clipWithHoles(rects) {
+        var d = 'polygon(evenodd, 0 0, 100% 0, 100% 100%, 0 100%, 0 0'
+        for (var i = 0; i < rects.length; i++) {
+          var r = rects[i]
+          d += ', ' + r.left + 'px ' + r.top + 'px, ' + r.right + 'px ' + r.top + 'px, '
             + r.right + 'px ' + r.bottom + 'px, ' + r.left + 'px ' + r.bottom + 'px, '
-            + r.left + 'px ' + r.top + 'px)'
-          : 'none'
-        var sig = markersSignature()
+            + r.left + 'px ' + r.top + 'px'
+        }
+        return d + ')'
+      }
+
+      function renderMarkers() {
+        // 对整个标记层挖去输入区与会话头部区域；滚动、尺寸变化时即使原文没动也要刷新。
+        var holes = hostComposerRects().concat(hostHeaderRects())
+        overlay.style.clipPath = holes.length > 0 ? clipWithHoles(holes) : 'none'
+        // 编号层用同一条裁剪路径兜底：编号只允许出现在会话内容可视区里，
+        // 绝不压在输入框或会话头部之上（定位逻辑已先让位/隐藏，这里是保险）。
+        numLayer.style.clipPath = overlay.style.clipPath
+        var sig = markersSignature(holes)
         if (sig !== markersSig) {
           markersSig = sig
           overlay.textContent = ''
+          numLayer.textContent = ''
           buildMarkers()
         }
       }
@@ -1456,38 +1636,59 @@ window.__ModuleLoader__.load({
           }
           if (anchor === null && rects.length > 0 && rects[0].width > 0) anchor = rects[0]
           if (anchor !== null) {
-            var chip = document.createElement('div')
-            chip.className = 'dsh-ann-num'
-            chip.textContent = String(i + 1)
             var chipTop = anchor.top - 20
             if (chipTop < 4) chipTop = Math.min(anchor.top + 2, window.innerHeight - 22)
             if (chipTop < 4) chipTop = 4
             var chipLeft = Math.max(4, Math.min(anchor.left - 4, window.innerWidth - 24))
-            var tries = 0
-            while (tries < 12) {
-              var clash = false
-              for (var p = 0; p < placed.length; p++) {
-                var bp = placed[p]
-                if (Math.abs(bp.left - chipLeft) < 18 && Math.abs(bp.top - chipTop) < 18) {
-                  clash = true
-                  break
-                }
-              }
-              if (!clash) break
-              chipLeft += 18
-              if (chipLeft > window.innerWidth - 24) { chipLeft = 4; chipTop += 18 }
-              tries++
+            // 编号只允许出现在「会话正文实际看得见」的地方：跟正文一样，滚出
+            // 内容可视区就消失，绝不贴边钉住（钉住会浮在输入框上/下面的空处）。
+            // 两条判据：① 落在正文滚动容器里；② 不与宿主遮挡 UI（会话头部、
+            // 整块输入区）相交。任一不满足就整条不渲染——不渲染也就不会出现
+            // 被裁掉半截的"阴影残影"。
+            var skipChip = false
+            var views = hostLocalRects('scrollBody')
+            for (var vc = 0; vc < views.length; vc++) {
+              var vr = views[vc]
+              if (chipLeft + 26 <= vr.left || chipLeft >= vr.right) continue
+              if (chipTop < vr.top || chipTop + 18 > vr.bottom) skipChip = true
+              break
             }
-            placed.push({ left: chipLeft, top: chipTop })
-            chip.style.left = chipLeft + 'px'
-            chip.style.top = chipTop + 'px'
-            ;(function (q) {
-              chip.addEventListener('click', function (ev) {
-                ev.stopPropagation()
-                openEditorFor(q)
-              })
-            })(q)
-            overlay.appendChild(chip)
+            var blockers = hostHeaderRects().concat(hostComposerRects())
+            for (var bc = 0; bc < blockers.length && !skipChip; bc++) {
+              var bk = blockers[bc]
+              if (chipLeft + 26 <= bk.left || chipLeft >= bk.right) continue
+              if (chipTop + 18 > bk.top && chipTop < bk.bottom) skipChip = true
+            }
+            if (!skipChip) {
+              var chip = document.createElement('div')
+              chip.className = 'dsh-ann-num'
+              chip.textContent = String(i + 1)
+              var tries = 0
+              while (tries < 12) {
+                var clash = false
+                for (var p = 0; p < placed.length; p++) {
+                  var bp = placed[p]
+                  if (Math.abs(bp.left - chipLeft) < 18 && Math.abs(bp.top - chipTop) < 18) {
+                    clash = true
+                    break
+                  }
+                }
+                if (!clash) break
+                chipLeft += 18
+                if (chipLeft > window.innerWidth - 24) { chipLeft = 4; chipTop += 18 }
+                tries++
+              }
+              placed.push({ left: chipLeft, top: chipTop })
+              chip.style.left = chipLeft + 'px'
+              chip.style.top = chipTop + 'px'
+              ;(function (q) {
+                chip.addEventListener('click', function (ev) {
+                  ev.stopPropagation()
+                  openEditorFor(q)
+                })
+              })(q)
+              numLayer.appendChild(chip)
+            }
           }
         }
       }
@@ -1604,11 +1805,19 @@ window.__ModuleLoader__.load({
       /** 提交前把批注块拼进 composer 草稿（随回车一起发送）。
        *  返回 true 表示批注块已在草稿中（本次刚拼入，或之前已拼入未发送）。 */
       function attachAndSend(e) {
-        var current = sessions.list.getSnapshot().current
-        if (current === undefined) return false
+        var current = readCurrentSessionId()
+        if (current === undefined) {
+          console.warn('[annotation] 无法确定当前会话，批注未拼入草稿')
+          showToast(t('toast.noSession'))
+          return false
+        }
         try {
           var scoped = sessions.scope(current)
-          if (scoped === undefined) return false
+          if (scoped === undefined) {
+            console.warn('[annotation] 当前会话 scope 不可用，批注未拼入草稿')
+            showToast(t('toast.noSession'))
+            return false
+          }
           var shell = ctx.conversation.input.for(scoped)
           var st = shell.state.getSnapshot()
           var draft = st.draft || ''
@@ -1712,7 +1921,7 @@ window.__ModuleLoader__.load({
         render()
         renderMarkers()
         // 面板正在显示时同步重建：否则删掉的条目还留在面板里，必须重新 hover 才消失。
-        if (tipLayer.childNodes.length > 0) showChipTip()
+        if (tipOwner === chipLayer) showChipTip()
       }
 
       function closeToolbar() {
@@ -1729,17 +1938,31 @@ window.__ModuleLoader__.load({
       // ---------- 输入框旁的批注标签（N 条批注 · 悬浮看全部内容） ----------
       var chipLayer = document.createElement('div')
       chipLayer.setAttribute('data-annotation-chip', '')
-      chipLayer.style.cssText = 'position:fixed;z-index:1150;display:none;align-items:center;gap:4px;height:22px;padding:0 10px;border-radius:11px;border:1px solid var(--dsw-alias-border-inverted);background:var(--dsw-specific-menu,#2c2c2e);box-shadow:var(--dsw-shadow-lv3);font-family:var(--dsw-font-family,system-ui);font-size:11px;color:var(--dsw-alias-label-primary);cursor:default;animation:dsh-ann-pop .12s var(--ds-ease-in-out, ease);'
+      chipLayer.style.cssText = 'position:fixed;z-index:1150;display:none;align-items:center;gap:4px;height:22px;padding:0 10px;border-radius:11px;border:1px solid var(--dsw-alias-border-inverted);background:var(--dsw-specific-menu, #2c2c2e);background:color-mix(in srgb, var(--dsw-specific-menu, #2c2c2e) 94%, transparent);box-shadow:var(--dsw-shadow-lv3);font-family:var(--dsw-font-family,system-ui);font-size:11px;color:var(--dsw-alias-label-primary);cursor:default;animation:dsh-ann-pop .12s var(--ds-ease-in-out, ease);'
       document.body.appendChild(chipLayer)
       var tipLayer = document.createElement('div')
       tipLayer.setAttribute('data-annotation-tip-layer', '')
       document.body.appendChild(tipLayer)
-      // 共享容器的监听器只注册一次（见下方 sharedTipMouseEnter / sharedTipMouseLeave）。
-      // tipLayer 是长期存活的 body 级单例，而气泡标签与回复芯片会被反复重建：原先
-      // 每个面板在 mouseenter 里都往它追加一对监听器，却从不移除，于是每重建一代
-      // 就净增两个闭包（持有已废弃的 grace 定时器与被移出 DOM 的触发元素）。
-      // 这里改为两处固定监听器 + 一个「当前面板的关闭钩子」指针，由面板在 mouseenter
-      // 时登记，关闭或关闭被取消后清空。
+      // tipLayer 是三类悬浮面板（输入框胶囊 / 气泡标签 / 回复芯片）共享的单例容器。
+      // 记录当前面板的归属元素：任何清空都必须指名归属，无归属清空会误杀用户
+      // 正在观看的面板——宿主 layout mutation 会高频触发 updateChip，面板刚显示
+      // 就被抹掉（表现为「芯片显示内容后直接消失」）。
+      var tipOwner = null
+      function clearTip(owner) {
+        if (owner !== undefined && tipOwner !== owner) return
+        tipLayer.textContent = ''
+        tipOwner = null
+      }
+      function presentTip(owner, el) {
+        tipLayer.textContent = ''
+        tipLayer.appendChild(el)
+        tipOwner = owner
+      }
+      // 共享容器的监听器只注册一次（sharedTipMouseEnter / sharedTipMouseLeave）。
+      // 气泡标签与回复芯片会被反复重建：原先每个面板在 mouseenter 里都往共享容器
+      // 追加一对监听器却从不移除，每重建一代净增两个闭包（持有已废弃的 grace 定时器
+      // 与被移出 DOM 的触发元素）。这里改为两处固定监听器 + 一个「当前面板的关闭钩子」
+      // 指针（tipActiveHide），由面板在 mouseenter 时登记，真正关闭后解除。
       var tipActiveHide = null
       function sharedTipMouseEnter() {
         if (tipActiveHide === null) return
@@ -1759,7 +1982,7 @@ window.__ModuleLoader__.load({
       function updateChip() {
         if (ui.quotes.length === 0) {
           chipLayer.style.display = 'none'
-          tipLayer.textContent = ''
+          clearTip(chipLayer)
           return
         }
         chipLayer.textContent = ''
@@ -1796,7 +2019,7 @@ window.__ModuleLoader__.load({
         hoverGrace = setTimeout(function () {
           hoverGrace = null
           releaseActiveTip()
-          tipLayer.textContent = ''
+          clearTip(chipLayer)
         }, 250)
       }
       function cancelHide() {
@@ -1815,10 +2038,9 @@ window.__ModuleLoader__.load({
 
       function showChipTip() {
         if (ui.quotes.length === 0) return
-        tipLayer.textContent = ''
         var el = document.createElement('div')
         el.className = 'dsh-ann-tip'
-        el.style.cssText = 'position:fixed;z-index:1160;width:300px;max-width:calc(100vw - 16px);padding:10px 12px;border-radius:12px;border:1px solid var(--dsw-alias-border-inverted);background:var(--dsw-specific-menu,#2c2c2e);box-shadow:var(--dsw-shadow-lv3);font-family:var(--dsw-font-family,system-ui);font-size:12px;color:var(--dsw-alias-label-primary);'
+        el.style.cssText = 'position:fixed;z-index:1160;box-sizing:border-box;width:300px;max-width:calc(100vw - 16px);padding:10px 12px;border-radius:12px;border:1px solid var(--dsw-alias-border-inverted);background:var(--dsw-specific-menu, #2c2c2e);background:color-mix(in srgb, var(--dsw-specific-menu, #2c2c2e) 94%, transparent);box-shadow:var(--dsw-shadow-lv3);font-family:var(--dsw-font-family,system-ui);font-size:12px;color:var(--dsw-alias-label-primary);'
         var head = document.createElement('div')
         head.style.cssText = 'font-weight:600;margin-bottom:6px;'
         head.textContent = t('tip.title', { n: ui.quotes.length })
@@ -1854,15 +2076,36 @@ window.__ModuleLoader__.load({
           item.appendChild(del)
           el.appendChild(item)
         }
-        tipLayer.appendChild(el)
+        presentTip(chipLayer, el)
         var r2 = chipLayer.getBoundingClientRect()
         var w2 = 300
-        var h2 = el.offsetHeight || 120
-        var left = Math.max(8, Math.min(r2.left, window.innerWidth - w2 - 8))
-        var top = r2.top - h2 - 6
-        if (top < 8) top = r2.bottom + 6
-        el.style.left = left + 'px'
-        el.style.top = Math.max(8, top) + 'px'
+        var gap = 8
+        // 浮窗只允许出现在正文可见区里（避开会话头部与整块输入区）：批注条数多
+        // 时先把它限制在这个高度内、内部滚动——否则十来个批注会把浮窗顶出屏幕
+        // 或压到输入框上，看起来就是"浮窗显示错乱"。
+        var topLimit = gap
+        var heads = hostHeaderRects()
+        for (var hi = 0; hi < heads.length; hi++) {
+          if (r2.left + w2 <= heads[hi].left || r2.left >= heads[hi].right) continue
+          if (heads[hi].bottom + gap > topLimit) topLimit = heads[hi].bottom + gap
+        }
+        var bottomLimit = window.innerHeight - gap
+        var seats = hostComposerRects()
+        for (var si = 0; si < seats.length; si++) {
+          if (r2.left + w2 <= seats[si].left || r2.left >= seats[si].right) continue
+          if (seats[si].top - gap < bottomLimit) bottomLimit = seats[si].top - gap
+        }
+        var room = Math.round(r2.top - gap - topLimit)
+        if (room < 120) room = Math.round(bottomLimit - r2.bottom - gap)
+        room = Math.max(80, room)
+        el.style.maxHeight = room + 'px'
+        el.style.overflowY = 'auto'
+        var h2 = Math.min(el.offsetHeight || 120, room)
+        var top = r2.top - h2 - gap
+        if (top < topLimit) top = r2.bottom + gap
+        if (top + h2 > bottomLimit) top = bottomLimit - h2
+        el.style.left = Math.max(8, Math.min(r2.left, window.innerWidth - w2 - 8)) + 'px'
+        el.style.top = Math.round(Math.max(topLimit, top)) + 'px'
         el.style.width = w2 + 'px'
       }
 
@@ -1893,7 +2136,7 @@ window.__ModuleLoader__.load({
               ui.quotes = []
               annotationAttached = false
               writeCurrentPendingQuotes()
-              tipLayer.textContent = ''
+              clearTip(chipLayer)
               updateChip()
               renderMarkers()
               pendingDeco.push({ items: sentItems })
@@ -1910,10 +2153,14 @@ window.__ModuleLoader__.load({
       function watchInputDraft() {
         if (inputWatchTimer !== null) { clearInterval(inputWatchTimer); inputWatchTimer = null }
         if (typeof inputUnsub === 'function') { inputUnsub(); inputUnsub = null }
-        var id = sessions.list.getSnapshot().current
+        // 会话切换时旧 scope 的订阅由上层先释放，这里只负责挂上当前会话；
+        // 切换后若 scope 尚不可用，仍靠下方的 1s 重试补齐（同 watchInputDraft 原有语义）。
+        // 注意：切换后必须重新订阅新会话的草稿，否则“草稿有→空”的发送清空权威会
+        // 继续监听旧会话，新会话发送后待发送批注永远不清（每次 Enter 重复拼稿）。
+        var id = readCurrentSessionId()
         if (id !== undefined && tryWatchInputDraft(id)) return
         inputWatchTimer = setInterval(function () {
-          var cur = sessions.list.getSnapshot().current
+          var cur = readCurrentSessionId()
           if (cur !== undefined && tryWatchInputDraft(cur)) {
             clearInterval(inputWatchTimer)
             inputWatchTimer = null
@@ -2022,14 +2269,13 @@ window.__ModuleLoader__.load({
         var tag = document.createElement('span')
         tag.setAttribute('data-annotation-bubble-tag', '')
         tag.textContent = t('bubble.tag', { n: items.length })
-        tag.style.cssText = 'display:inline-flex;align-items:center;height:18px;padding:0 8px;margin:4px 0 0 4px;border-radius:9px;border:1px solid var(--dsw-alias-border-inverted);background:var(--dsw-specific-menu,#2c2c2e);color:var(--dsw-alias-label-secondary);font-family:var(--dsw-font-family,system-ui);font-size:10px;cursor:default;'
+        tag.style.cssText = 'display:inline-flex;align-items:center;height:18px;padding:0 8px;margin:4px 0 0 4px;border-radius:9px;border:1px solid var(--dsw-alias-border-inverted);background:var(--dsw-specific-menu, #2c2c2e);background:color-mix(in srgb, var(--dsw-specific-menu, #2c2c2e) 94%, transparent);color:var(--dsw-alias-label-secondary);font-family:var(--dsw-font-family,system-ui);font-size:10px;cursor:default;'
         ;(function (list) {
           tag.addEventListener('mouseenter', function () {
-            tipLayer.textContent = ''
             tipActiveHide = { keep: bubbleKeep, hide: bubbleHide }
             var el = document.createElement('div')
             el.className = 'dsh-ann-tip'
-            el.style.cssText = 'position:fixed;z-index:1160;width:300px;max-width:calc(100vw - 16px);padding:10px 12px;border-radius:12px;border:1px solid var(--dsw-alias-border-inverted);background:var(--dsw-specific-menu,#2c2c2e);box-shadow:var(--dsw-shadow-lv3);font-family:var(--dsw-font-family,system-ui);font-size:12px;color:var(--dsw-alias-label-primary);'
+            el.style.cssText = 'position:fixed;z-index:1160;box-sizing:border-box;width:300px;max-width:calc(100vw - 16px);padding:10px 12px;border-radius:12px;border:1px solid var(--dsw-alias-border-inverted);background:var(--dsw-specific-menu, #2c2c2e);background:color-mix(in srgb, var(--dsw-specific-menu, #2c2c2e) 94%, transparent);box-shadow:var(--dsw-shadow-lv3);font-family:var(--dsw-font-family,system-ui);font-size:12px;color:var(--dsw-alias-label-primary);'
             var head = document.createElement('div')
             head.style.cssText = 'font-weight:600;margin-bottom:6px;'
             head.textContent = t('bubble.title', { n: list.length })
@@ -2053,7 +2299,7 @@ window.__ModuleLoader__.load({
               }
               el.appendChild(item)
             }
-            tipLayer.appendChild(el)
+            presentTip(tag, el)
             var r2 = tag.getBoundingClientRect()
             var w2 = 300
             var h2 = el.offsetHeight || 120
@@ -2070,7 +2316,7 @@ window.__ModuleLoader__.load({
             bubbleGrace = setTimeout(function () {
               bubbleGrace = null
               releaseActiveTip()
-              tipLayer.textContent = ''
+              clearTip(tag)
             }, 250)
           }
           function bubbleKeep() {
@@ -2101,13 +2347,6 @@ window.__ModuleLoader__.load({
           }
         }
         return null
-      }
-
-      /** 一次性诊断（仅控制台，不打扰用户）：标记行 + 原因。 */
-      function markRowDiag(row, msg) {
-        if (row.hasAttribute('data-annotation-diag')) return
-        row.setAttribute('data-annotation-diag', '')
-        console.warn('[annotation] ' + msg, row)
       }
 
       /** 扫描所有已结束流式输出的助手行：把「Annotation N：」替换为可悬浮芯片。 */
@@ -2143,18 +2382,16 @@ window.__ModuleLoader__.load({
           if (el.querySelector('[data-annotation-reply-chip]') !== null) continue
           if ((el.textContent || '').indexOf('Annotation') === -1) continue
           var items = findPrevAnnotationItems(el)
-          if (items === null || items.length === 0) {
-            // 拿不到条目数据也照样生成芯片（hover 显示占位），并一次性提示。
-            items = []
-            markRowDiag(el, '未找到批注条目数据，芯片将显示占位内容（可继续用）')
-          }
+          // 拿不到条目数据就干脆不生成芯片，保留原文「Annotation N：」——
+          // 一个 hover 只显示「未找到对应批注条目」的占位芯片没有任何价值。
+          if (items === null || items.length === 0) continue
           decorateAnnotationLabels(el, items)
         }
       }
 
       /** 在行内所有文本节点中找「Annotation N：」（不区分大小写），替换为芯片。 */
       function decorateAnnotationLabels(row, items) {
-        var re = /Annotation[\s\u200b\u200c\u200d\u00ad]*(\d+)[\s\u200b\u200c\u200d\u00ad]*[:：]/gi
+        var re = /Annotation[\s\u200b\u200c\u200d\u00ad]*(\d+)[\s\u200b\u200c\u200d\u00ad]*[:：]?/gi
         // 先快照所有文本节点，再逐个处理：遍历中途修改树会让 TreeWalker
         // 指针失效（处理完第一个节点后遍历就断了）——这是「只有第一个
         // Annotation 变成芯片」的根因。
@@ -2173,66 +2410,71 @@ window.__ModuleLoader__.load({
           var last = 0
           re.lastIndex = 0
           var m
+          var replaced = 0
           while ((m = re.exec(v)) !== null) {
             if (m.index > last) frag.appendChild(document.createTextNode(v.slice(last, m.index)))
-            frag.appendChild(makeReplyChip(parseInt(m[1], 10), items))
+            var num = parseInt(m[1], 10)
+            var item = items[num - 1]
+            // 编号越界（比如模型自己在思考里写了「Annotation 5：」，实际只有 3 条）
+            // 不是真正的逐条回应：原文照旧，不生成芯片。
+            if (item !== undefined) {
+              frag.appendChild(makeReplyChip(num, item))
+              replaced++
+              done++
+            } else {
+              frag.appendChild(document.createTextNode(m[0]))
+            }
             last = m.index + m[0].length
-            done++
           }
+          // 一个都没真正替换时绝不碰 DOM：否则 replaceChild 会用一个内容相同的
+          // 新节点换上，产生 childList mutation → MutationObserver → 全量装饰 →
+          // 再替换…… 自激成死循环，把客户端主线程打满。
+          if (replaced === 0) continue
           if (last < v.length) frag.appendChild(document.createTextNode(v.slice(last)))
           n.parentNode.replaceChild(frag, n)
         }
+        // 匹配不到完整「Annotation N：」时静默：正文里出现 annotation 这个词
+        // （模型自己的措辞、英文注解说明等）本来就不该产生任何日志。
         if (done > 0) {
           console.log('[annotation] 回复批注芯片 ×' + done, row.querySelectorAll('[data-annotation-reply-chip]').length + ' 个元素')
-        } else {
-          // 行内含 Annotation 但一个都没匹配上 → 文本节点里没有完整「Annotation N：」模式
-          markRowDiag(row, '行内含 Annotation 但未匹配到「Annotation N：」模式')
         }
       }
 
-      /** 构造「Annotation N」芯片（hover 显示该批注的原文与批注内容）。 */
-      function makeReplyChip(num, items) {
+      /** 构造「Annotation N」芯片（hover 显示该批注的原文与批注内容）。
+       *  `item` 必定存在：调用方只在编号能对应到批注条目时才生成芯片。 */
+      function makeReplyChip(num, item) {
         var chip = document.createElement('span')
         chip.setAttribute('data-annotation-reply-chip', '')
-        chip.style.cssText = 'display:inline-flex;align-items:center;height:18px;padding:0 6px;margin:0 2px;border-radius:9px;border:1px solid var(--dsw-alias-border-inverted);background:var(--dsw-specific-menu,#2c2c2e);color:var(--dsw-alias-text-accent,#4c9aff);font-family:var(--dsw-font-family,system-ui);font-size:11px;font-weight:600;cursor:default;vertical-align:middle;'
+        chip.style.cssText = 'display:inline-flex;align-items:center;height:18px;padding:0 6px;margin:0 2px;border-radius:9px;border:1px solid var(--dsw-alias-border-inverted);background:var(--dsw-specific-menu, #2c2c2e);background:color-mix(in srgb, var(--dsw-specific-menu, #2c2c2e) 94%, transparent);color:var(--dsw-alias-text-accent,#4c9aff);font-family:var(--dsw-font-family,system-ui);font-size:11px;font-weight:600;cursor:default;vertical-align:middle;'
         chip.textContent = 'Annotation ' + num
-        var item = items[num - 1]
         var grace = null
         function hide() {
           if (grace !== null) clearTimeout(grace)
-          grace = setTimeout(function () { grace = null; releaseActiveTip(); tipLayer.textContent = '' }, 250)
+          grace = setTimeout(function () { grace = null; releaseActiveTip(); clearTip(chip) }, 250)
         }
         function keep() {
           if (grace !== null) { clearTimeout(grace); grace = null }
         }
         chip.addEventListener('mouseenter', function () {
-          tipLayer.textContent = ''
           tipActiveHide = { keep: keep, hide: hide }
           var el = document.createElement('div')
           el.className = 'dsh-ann-tip'
-          el.style.cssText = 'position:fixed;z-index:1160;width:320px;max-width:calc(100vw - 16px);padding:10px 12px;border-radius:12px;border:1px solid var(--dsw-alias-border-inverted);background:var(--dsw-specific-menu,#2c2c2e);box-shadow:var(--dsw-shadow-lv3);font-family:var(--dsw-font-family,system-ui);font-size:12px;color:var(--dsw-alias-label-primary);'
+          el.style.cssText = 'position:fixed;z-index:1160;width:320px;max-width:calc(100vw - 16px);padding:10px 12px;border-radius:12px;border:1px solid var(--dsw-alias-border-inverted);background:var(--dsw-specific-menu, #2c2c2e);background:color-mix(in srgb, var(--dsw-specific-menu, #2c2c2e) 94%, transparent);box-shadow:var(--dsw-shadow-lv3);font-family:var(--dsw-font-family,system-ui);font-size:12px;color:var(--dsw-alias-label-primary);'
           var head = document.createElement('div')
           head.style.cssText = 'font-weight:600;margin-bottom:6px;'
-          head.textContent = item !== undefined ? t('reply.headWithQuote', { n: num }) : t('reply.headNoQuote', { n: num })
+          head.textContent = t('reply.headWithQuote', { n: num })
           el.appendChild(head)
-          if (item !== undefined) {
-            var quote = document.createElement('div')
-            quote.style.cssText = 'font-size:12px;line-height:1.5;color:var(--dsw-alias-label-secondary);word-break:break-word;padding:6px 8px;border-radius:8px;background:rgba(127,127,127,.12);'
-            quote.textContent = truncate(item.text, 140)
-            el.appendChild(quote)
-            if (item.note !== '') {
-              var note = document.createElement('div')
-              note.style.cssText = 'font-size:11px;color:var(--dsw-alias-text-accent,#4c9aff);margin-top:6px;word-break:break-word;'
-              note.textContent = t('reply.notePrefix') + truncate(item.note, 80)
-              el.appendChild(note)
-            }
-          } else {
-            var none = document.createElement('div')
-            none.style.cssText = 'font-size:11px;color:var(--dsw-alias-label-tertiary);'
-            none.textContent = t('reply.missing')
-            el.appendChild(none)
+          var quote = document.createElement('div')
+          quote.style.cssText = 'font-size:12px;line-height:1.5;color:var(--dsw-alias-label-secondary);word-break:break-word;padding:6px 8px;border-radius:8px;background:rgba(127,127,127,.12);'
+          quote.textContent = truncate(item.text, 140)
+          el.appendChild(quote)
+          if (typeof item.note === 'string' && item.note !== '') {
+            var note = document.createElement('div')
+            note.style.cssText = 'font-size:11px;color:var(--dsw-alias-text-accent,#4c9aff);margin-top:6px;word-break:break-word;'
+            note.textContent = t('reply.notePrefix') + truncate(item.note, 80)
+            el.appendChild(note)
           }
-          tipLayer.appendChild(el)
+          presentTip(chip, el)
           var r2 = chip.getBoundingClientRect()
           var w2 = 320
           var h2 = el.offsetHeight || 100
@@ -2279,6 +2521,27 @@ window.__ModuleLoader__.load({
       }
 
       var decoTimer = null
+      /** 全量装饰的合并调度：首个批次立即执行（气泡隐藏要赶在浏览器绘制前，
+       *  否则会闪一下批注块），紧随其后的批次合并进 120ms 窗口。
+       *  原因：装饰本身会改宿主 DOM（贴标签、换芯片、切气泡文本）并再次触发
+       *  MutationObserver，一条回复上的多次替换会在长会话里滚成高频全量扫描，
+       *  把主线程烧满——表现就是客户端卡死、什么都点不动。 */
+      var decorateAllPending = null
+      var lastDecorateAllAt = 0
+      function scheduleDecorateAll() {
+        var now = performance.now()
+        if (now - lastDecorateAllAt >= 120) {
+          lastDecorateAllAt = now
+          decorateAll()
+          return
+        }
+        if (decorateAllPending !== null) return
+        decorateAllPending = setTimeout(function () {
+          decorateAllPending = null
+          lastDecorateAllAt = performance.now()
+          decorateAll()
+        }, 120)
+      }
       function kickDecorate() {
         decorateAll()
         if (decoTimer === null) decoTimer = setInterval(decorateAll, 1000)
@@ -2302,7 +2565,7 @@ window.__ModuleLoader__.load({
         if (ui.mode !== 'closed') render()
         updateChip()
         // 打开的悬浮面板按新语言关闭（下次 hover 以新语言重建）。
-        tipLayer.textContent = ''
+        clearTip()
         var tags = document.querySelectorAll('[data-annotation-bubble-tag]')
         for (var i = 0; i < tags.length; i++) {
           var items = tags[i].__annotationItems
@@ -2316,10 +2579,16 @@ window.__ModuleLoader__.load({
       }
 
       // ---------- 待发送批注按会话恢复 ----------
-      var lastSessionId = sessions.list.getSnapshot().current
+      // 0.1.6-alpha.2 起选择态已移出 list store：list.subscribe 不再于会话切换时触发。
+      // 切换检测三层并行（onSessionSwitch 幂等，重复触发无害）：
+      // ① uiSession 的 current source（0.1.7+ 精确；uiSession 晚于插件注册时，
+      //    onSessionSwitch 内的惰性探测仍能读到，订阅缺口由轮询兜底）；
+      // ② list.subscribe（0.1.6-alpha.2 之前的宿主精确）；
+      // ③ 1s 轮询（新宿主上 ② 永不触发、① 缺席时它是唯一触发点）。
+      var lastSessionId = readCurrentSessionId()
       ui.quotes = readPendingQuotes(lastSessionId)
-      var unsub = sessions.list.subscribe(function () {
-        var cur = sessions.list.getSnapshot().current
+      function onSessionSwitch() {
+        var cur = readCurrentSessionId()
         if (cur === lastSessionId) return
         writePendingQuotes(lastSessionId)
         lastSessionId = cur
@@ -2330,11 +2599,31 @@ window.__ModuleLoader__.load({
         // 旧会话那条消息回切后会由气泡反解析路径重新装饰。
         pendingDeco.length = 0
         ui.noteDraft = ''
-        tipLayer.textContent = ''
+        clearTip()
         updateChip()
         watchInputDraft()
         renderMarkers()
-      })
+      }
+      var unsubList = null
+      var unsubSession = null
+      var switchTimer = null
+      try {
+        if (sessions.list !== undefined && sessions.list !== null
+          && typeof sessions.list.subscribe === 'function') {
+          unsubList = sessions.list.subscribe(onSessionSwitch)
+        }
+      } catch (_) { unsubList = null }
+      try {
+        var uiSource = currentSessionSource()
+        if (uiSource !== null) unsubSession = uiSource.subscribe(onSessionSwitch)
+      } catch (_) { unsubSession = null }
+      switchTimer = setInterval(onSessionSwitch, 1000)
+      function unsubSessionSwitch() {
+        try { if (typeof unsubList === 'function') unsubList() } catch (_) { /* ignore */ }
+        try { if (typeof unsubSession === 'function') unsubSession() } catch (_) { /* ignore */ }
+        if (switchTimer !== null) { clearInterval(switchTimer); switchTimer = null }
+      }
+      var unsub = unsubSessionSwitch
 
       watchInputDraft()
       kickDecorate()
@@ -2360,16 +2649,18 @@ window.__ModuleLoader__.load({
         if (typeof inputUnsub === 'function') inputUnsub()
         if (typeof localeUnsub === 'function') localeUnsub()
         if (decoTimer !== null) { clearInterval(decoTimer); decoTimer = null }
+        if (decorateAllPending !== null) { clearTimeout(decorateAllPending); decorateAllPending = null }
         if (composerObserver !== null) composerObserver.disconnect()
         chipLayer.remove()
         tipLayer.remove()
         host.remove()
         overlay.remove()
+        numLayer.remove()
       }
     }
 
     exports.name = '@changfenhuang/dsh-annotation'
-    exports.inject = ['sessions', 'conversation', 'locale']
+    exports.inject = ['sessions', 'conversation', 'locale', 'uiSession']
     exports.apply = apply
 
     return module.exports
