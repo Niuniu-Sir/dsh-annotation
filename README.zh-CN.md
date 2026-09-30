@@ -1,6 +1,6 @@
 # dsh-annotation
 
-验证宿主：DSH 0.1.6-alpha.1；最低支持线仍验证 DSH 0.1.2-rc.1。版本号指 DSH 内核，不是 Desktop 外壳。
+CI 在 Node 22 与 24 上跑单元检查，不克隆 DSH 宿主。浏览器冒烟和发布验收在运行时解析 deepseek-ai/deepseek-harness 上最高的 `dsh-v*` 标签。版本号指 DSH 内核，不是 Desktop 外壳。
 
 侧边栏文件批注（DSH 0.1.6-alpha.1）：在工作区文件预览中选中文本、Markdown 或代码正文，即可沿用同一套批注、保存和回车发送流程。编辑器和发给模型的引用包含文件路径；刷新并重新打开原文件后恢复标记，同文不同文件可分别批注。当前不包含 PDF、图片或 iframe 内 HTML。
 
