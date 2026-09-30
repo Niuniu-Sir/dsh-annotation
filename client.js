@@ -2062,11 +2062,52 @@ window.__ModuleLoader__.load({
       // 悬停宽限：标签与面板间有间隙，鼠标跨越间隙的瞬间不在任何元素上——
       // 离开后给 250ms 宽限期，期间进入面板则取消关闭（官方 HoverCard 的
       // pointer-grace 同款思路），同时杜绝闪烁循环。
+      //
+      // 但固定 250ms 只是「赌手快」：面板定位是 r.bottom + 6 或 r.top - h - 6，
+      // 与触发元素之间有 6px 间隙，指针停在间隙里把宽限走满，面板照样消失；
+      // 触摸板细调或系统卡顿更容易命中。这里改成确定性判定：宽限到点时复查
+      // **实时**指针位置，只要还在「触发元素 + 面板 + 间隙容差」的并集内就不关闭。
+      //
+      // 必须用实时坐标：mouseleave 事件的 clientX/clientY 是离开那一刻的，
+      // 250ms 后再拿它判断会读到过期位置，等于没判。
+      var TIP_GAP_TOLERANCE = 10
+      var livePointerX = null
+      var livePointerY = null
+      function onTipPointerMove(e) {
+        livePointerX = e.clientX
+        livePointerY = e.clientY
+      }
+      document.addEventListener('pointermove', onTipPointerMove, true)
+      function pointerInsideRect(r) {
+        if (r === undefined || r === null) return false
+        if (livePointerX === null || livePointerY === null) return false
+        return livePointerX >= r.left - TIP_GAP_TOLERANCE && livePointerX <= r.right + TIP_GAP_TOLERANCE
+          && livePointerY >= r.top - TIP_GAP_TOLERANCE && livePointerY <= r.bottom + TIP_GAP_TOLERANCE
+      }
+      /** 实时指针是否仍在任一已展开面板内（含间隙容差）。 */
+      function pointerWithinTipLayer() {
+        for (var i = 0; i < tipLayer.childNodes.length; i++) {
+          var node = tipLayer.childNodes[i]
+          if (node.nodeType !== 1 || typeof node.getBoundingClientRect !== 'function') continue
+          if (pointerInsideRect(node.getBoundingClientRect())) return true
+        }
+        return false
+      }
+      /** 关不关面板的统一判据：指针还在面板上或触发元素上就保持展开。 */
+      function shouldKeepTipOpen(trigger) {
+        if (pointerWithinTipLayer()) return true
+        if (trigger === undefined || trigger === null) return false
+        if (typeof trigger.getBoundingClientRect !== 'function') return false
+        return pointerInsideRect(trigger.getBoundingClientRect())
+      }
       var hoverGrace = null
-      function scheduleHide() {
+      // 触发元素由调用方传入：面板留在 DOM 里时指针常常停在触发元素上
+      // （还没移进面板），只判面板矩形会误关。
+      function scheduleHide(trigger) {
         if (hoverGrace !== null) clearTimeout(hoverGrace)
         hoverGrace = setTimeout(function () {
           hoverGrace = null
+          if (shouldKeepTipOpen(trigger)) return
           releaseActiveTip()
           clearTip(chipLayer)
         }, 250)
@@ -2081,9 +2122,9 @@ window.__ModuleLoader__.load({
       chipLayer.addEventListener('mouseenter', function () {
         cancelHide()
         showChipTip()
-        tipActiveHide = { keep: cancelHide, hide: scheduleHide }
+        tipActiveHide = { keep: cancelHide, hide: function () { scheduleHide(chipLayer) } }
       })
-      chipLayer.addEventListener('mouseleave', scheduleHide)
+      chipLayer.addEventListener('mouseleave', function () { scheduleHide(chipLayer) })
 
       function showChipTip() {
         if (ui.quotes.length === 0) return
@@ -2364,6 +2405,7 @@ window.__ModuleLoader__.load({
             if (bubbleGrace !== null) clearTimeout(bubbleGrace)
             bubbleGrace = setTimeout(function () {
               bubbleGrace = null
+              if (shouldKeepTipOpen(tag)) return
               releaseActiveTip()
               clearTip(tag)
             }, 250)
@@ -2499,7 +2541,12 @@ window.__ModuleLoader__.load({
         var grace = null
         function hide() {
           if (grace !== null) clearTimeout(grace)
-          grace = setTimeout(function () { grace = null; releaseActiveTip(); clearTip(chip) }, 250)
+          grace = setTimeout(function () {
+            grace = null
+            if (shouldKeepTipOpen(chip)) return
+            releaseActiveTip()
+            clearTip(chip)
+          }, 250)
         }
         function keep() {
           if (grace !== null) { clearTimeout(grace); grace = null }
@@ -2684,10 +2731,12 @@ window.__ModuleLoader__.load({
         document.removeEventListener('selectionchange', onSelection)
         document.removeEventListener('pointerdown', onDocPointerDown, true)
         document.removeEventListener('keydown', onKeyDown, true)
+        document.removeEventListener('pointermove', onTipPointerMove, true)
         document.removeEventListener('pointerdown', onSendPointerDown, true)
         document.removeEventListener('click', onSendKeyboardClick, true)
         document.removeEventListener('compositionstart', markImeComposing, true)
         document.removeEventListener('compositionend', markImeEnded, true)
+        document.removeEventListener('pointermove', onTipPointerMove, true)
         if (imeClearTimer !== null) { clearTimeout(imeClearTimer); imeClearTimer = null }
         window.removeEventListener('scroll', onLayoutChange, true)
         window.removeEventListener('resize', onLayoutChange)

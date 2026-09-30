@@ -51,7 +51,8 @@ test('三类面板都不再往共享容器追加监听器', () => {
   // 面板只挂自己的触发元素监听，并且只做登记
   assert.match(source, /tag\.addEventListener\('mouseleave', bubbleHide\)/)
   assert.match(source, /chip\.addEventListener\('mouseleave', hide\)/)
-  assert.match(source, /chipLayer\.addEventListener\('mouseleave', scheduleHide\)/)
+  // 胶囊的 scheduleHide 以 chipLayer 为触发元素传入（实时指针判定需要）
+  assert.match(source, /chipLayer\.addEventListener\('mouseleave', function \(\) \{ scheduleHide\(chipLayer\) \}\)/)
   // 旧写法（每代面板各挂一对到 tipLayer）应彻底消失
   assert.doesNotMatch(source, /tipLayer\.addEventListener\('mouseenter', (bubbleKeep|keep|cancelHide)\)/)
   assert.doesNotMatch(source, /tipLayer\.addEventListener\('mouseleave', (bubbleHide|hide|scheduleHide)\)/)
@@ -60,7 +61,7 @@ test('三类面板都不再往共享容器追加监听器', () => {
 test('每类面板都在 mouseenter 时登记关闭钩子', () => {
   const registrations = source.match(/tipActiveHide = \{ keep: [^}]+ \}/g) ?? []
   assert.equal(registrations.length, 3, '三类面板各应登记一次（胶囊 / 气泡标签 / 回复芯片）')
-  assert.match(source, /tipActiveHide = \{ keep: cancelHide, hide: scheduleHide \}/)
+  assert.match(source, /tipActiveHide = \{ keep: cancelHide, hide: function \(\) \{ scheduleHide\(chipLayer\) \} \}/)
   assert.match(source, /tipActiveHide = \{ keep: bubbleKeep, hide: bubbleHide \}/)
   assert.match(source, /tipActiveHide = \{ keep: keep, hide: hide \}/)
 })
