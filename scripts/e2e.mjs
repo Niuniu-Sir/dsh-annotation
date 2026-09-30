@@ -164,10 +164,17 @@ try {
       const session = page.getByText('文件批注验收', { exact: true }).first()
       if (await session.isVisible()) await session.click()
       const expand = page.locator('[data-sidebar-right-expand]')
-      if (await expand.isVisible()) await expand.click()
+      const opened = page.locator('[data-sidebar-right-open]')
+      // The header control mounts after the session view. A collapsed panel stays
+      // in the DOM with visibility:hidden, so don't click that copy first.
+      await expand.or(opened).first().waitFor({ state: 'attached', timeout: 15000 })
+      if ((await opened.count()) === 0) {
+        if (await expand.isVisible()) await expand.click()
+        else await expand.first().evaluate(button => button.click())
+      }
+      await opened.first().waitFor({ state: 'attached' })
       const files = page.locator('[data-sidebar-right-guide-entry="files"]')
       if (!(await files.isVisible())) {
-        // A fresh pane has no guide yet; the strip's add control opens one.
         await page.locator('[data-dockkit-add-tab]').first().click()
       }
       await files.click()
