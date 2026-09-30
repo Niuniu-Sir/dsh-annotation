@@ -59,6 +59,11 @@ function makeEnv() {
   const sandbox = {
     tipLayer,
     console,
+    // 合并 #67/#65 后，scheduleHide 的关闭路径还会解除关闭钩子登记并做归属清空；
+    // 这两个机制的行为由 shared-listeners 套件覆盖，这里只需让"真正关闭"可观测。
+    releaseActiveTip() {},
+    clearTip() { tipLayer.textContent = '' },
+    chipLayer: {},
     setTimeout(fn, ms) { const id = ++seq; timers.set(id, { fn, ms }); return id },
     clearTimeout(id) { timers.delete(id) },
   }
