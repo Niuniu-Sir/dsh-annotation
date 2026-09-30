@@ -26,10 +26,17 @@ test('watchInputDraft 订阅失败时每秒重试（初始化时序洞由重试�
 })
 
 test('会话切换作废旧会话未消费的发送暂存数据', () => {
-  const sw = source.match(/var unsub = sessions\.list\.subscribe\(function \(\) \{[\s\S]*?\n      \}\)/)
+  const sw = source.match(/var unsub = currentSessionSource\(\)\.subscribe\(function \(\) \{[\s\S]*?\n      \}\)/)
   assert.ok(sw, 'client.js should define the session-switch handler')
   assert.match(sw[0], /pendingDeco\.length = 0/,
     'stale send staging from the previous session must be dropped, not consumed by the new session history')
+})
+
+test('当前会话 id 兼容 DSH 0.1.7（list 快照不再暴露 current）', () => {
+  assert.match(source, /function readCurrentSessionId\(\)/, 'client.js should route current-session reads through one helper')
+  assert.match(source, /adapter\.current/, 'helper should prefer uiSession.adapter.current')
+  assert.doesNotMatch(source, /sessions\.list\.getSnapshot\(\)\.current/,
+    'the removed list.current field must not be read directly — it is always undefined on 0.1.7+, which breaks send')
 })
 
 test('发送暂存数据在隐藏手术成功后才消费（peek → shift，不提前丢失）', () => {
