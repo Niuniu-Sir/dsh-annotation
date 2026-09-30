@@ -26,8 +26,10 @@ function harness(lang, draft, sourcePath, sessionsOverride, storageOverride) {
     ui.quotes[0].sourcePath = sourcePath
     var annotationAttached = false
     var ctx = { conversation: { input: { for: () => shell } } }
+    var uiSessionService = null
     function showToast() {}
-    ${['currentSessionId', 'buildBlock', 'shouldAttachForEnter', 'isCommandDraft', 'attachAndSend', 'hideAnnotationBlock', 'parseItemsFromBubble'].map(fn).join('\n')}
+    ${['uiSessionFace', 'currentSessionSource', 'readCurrentSessionId'].map(fn).join('\n')}
+    ${['buildBlock', 'shouldAttachForEnter', 'isCommandDraft', 'attachAndSend', 'hideAnnotationBlock', 'parseItemsFromBubble'].map(fn).join('\n')}
     return { setLang, attachAndSend, hideAnnotationBlock, parseItemsFromBubble }
   `)(shell, document, { SHOW_TEXT: 4 }, sourcePath, sessions, storageOverride)
   api.setLang(lang)
