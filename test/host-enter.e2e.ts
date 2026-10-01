@@ -118,7 +118,10 @@ function textOf(request: SessionPromptRequest): string {
 }
 
 function userMessages(events: readonly SessionEvent[]): SessionEvent<'user/message'>[] {
-  return events.filter((event): event is SessionEvent<'user/message'> => event.type === 'user/message')
+  // The composed Host also logs model-visible runtime-context snapshots as
+  // user/message. Assert the browser-authored stream separately by its source.
+  return events.filter((event): event is SessionEvent<'user/message'> =>
+    event.type === 'user/message' && event.data.source.kind === 'user')
 }
 
 for (const busyEnter of ['queue', 'steer'] as const) {
@@ -247,11 +250,16 @@ for (const busyEnter of ['queue', 'steer'] as const) {
         expect(textOf(target)).toContain(QUESTION)
         if (accelerated) {
           expect(textOf(target)).toBe(QUESTION)
-          expect(await page.locator('[data-annotation-chip]').count()).toBe(1)
+          expect(await page.locator('[data-annotation-chip]').isVisible()).toBe(true)
+          const pending = await page.evaluate(id => localStorage.getItem('dsh.annotation.pending.v1.' + id), target.sessionId)
+          expect(pending).not.toBeNull()
+          expect(JSON.parse(pending!)).toMatchObject([{ text: QUOTE, note: NOTE }])
         } else {
           expect(textOf(target)).toContain(QUOTE)
           expect(textOf(target)).toContain(NOTE)
-          await expect.poll(() => page!.locator('[data-annotation-chip]').count()).toBe(0)
+          // updateChip hides the permanent layer rather than removing it.
+          await expect.poll(() => page!.locator('[data-annotation-chip]').isVisible()).toBe(false)
+          await expect.poll(() => page!.evaluate(id => localStorage.getItem('dsh.annotation.pending.v1.' + id), target.sessionId)).toBeNull()
         }
         await expect.poll(() => (expectedMode === 'queue' ? agent.inbox.nextTurn : agent.inbox.nextStep)
           .some(message => message.source.kind === 'user' && 'rpcId' in message.source && message.source.rpcId === target.requestId)).toBe(true)
@@ -264,11 +272,16 @@ for (const busyEnter of ['queue', 'steer'] as const) {
         const expectedOrder = expectedMode === 'queue'
           ? [initialRequest!.content, existingRequest!.content, target.content]
           : [initialRequest!.content, target.content, existingRequest!.content]
+        const expectedRpcOrder = expectedMode === 'queue'
+          ? [initialRequest!.requestId, existingRequest!.requestId, target.requestId]
+          : [initialRequest!.requestId, target.requestId, existingRequest!.requestId]
         expect(userMessages(events).map(event => event.data.content)).toEqual(expectedOrder)
+        expect(userMessages(events).map(event => 'rpcId' in event.data.source ? event.data.source.rpcId : undefined)).toEqual(expectedRpcOrder)
         const reader = await scaffold.ctx.sessionPersistence.open(target.sessionId, 'read')
         let durable: readonly SessionEvent[]
         try { durable = (await reader.read()).events } finally { await reader.close() }
         expect(userMessages(durable).map(event => event.data.content)).toEqual(expectedOrder)
+        expect(userMessages(durable).map(event => 'rpcId' in event.data.source ? event.data.source.rpcId : undefined)).toEqual(expectedRpcOrder)
         const targetEvents = userMessages(durable).filter(event => event.data.source.kind === 'user'
           && 'rpcId' in event.data.source && event.data.source.rpcId === target.requestId)
         expect(targetEvents).toHaveLength(1)
