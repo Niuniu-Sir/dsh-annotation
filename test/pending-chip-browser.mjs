@@ -62,6 +62,10 @@ try {
       && chip.top < force.bottom && chip.bottom > force.top
     return { chipBottom: chip.bottom, seatTop: seat.top, cardTop: card.top, chipLeft: chip.left, chipRight: chip.right, overlaps }
   })
+  // The entry animation translates the chip by 3px. Visibility alone does not
+  // mean its bounding box has settled, so compare queue removal against the
+  // finished animation rather than a partially translated first frame.
+  await chip.evaluate(el => Promise.all(el.getAnimations().map(animation => animation.finished)))
   const initial = await geometry()
   await addQueue()
   await page.waitForTimeout(150)
@@ -91,7 +95,8 @@ try {
   await page.evaluate(() => { document.querySelector('#queue').remove() })
   await page.waitForTimeout(150)
   state = await geometry()
-  assert.ok(Math.abs(state.chipBottom - initial.chipBottom) < 1, 'removing the queue returns the chip to its normal anchor')
+  assert.ok(Math.abs(state.chipBottom - initial.chipBottom) < 1,
+    `removing the queue returns the chip to its normal anchor: ${JSON.stringify({ initial, state })}`)
 
   // Old hosts expose the CSS-Modules seat instead of the stable data hook.
   await page.evaluate(() => { document.querySelector('#seat').removeAttribute('data-composer-seat') })
