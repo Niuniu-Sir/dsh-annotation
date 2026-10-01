@@ -1,9 +1,5 @@
 # dsh-annotation
 
-CI runs unit checks on Node 22 and 24 without cloning a DSH host. Browser smoke and release acceptance resolve the highest `dsh-v*` tag on deepseek-ai/deepseek-harness at run time. These are core versions, not Desktop shell versions.
-
-Sidebar file annotations (DSH 0.1.6-alpha.1): select plain text, Markdown, or code in a workspace file preview and use the same annotate, save, and Enter-to-send flow. The editor and model-facing quote include the file path. After reloading and reopening the original file, its markers are restored; identical passages in different files remain separate. PDF, images, and HTML inside iframes are not covered.
-
 <div align="center">
 
 **English** · [简体中文](./README.zh-CN.md)
@@ -27,6 +23,8 @@ Select any text in an assistant reply to annotate it (the annotation body may be
 Form: official **bundle plugin** (`dsh.bundle` + a `dsh.client` declaration in package.json, injected into the browser via client-modules; the Node half is an empty implementation). **Zero core changes** — no DSH files are touched; `cordis.patch.yml` only inserts its own id once, and the profile patch stays `[]`.
 
 ## Features
+
+Sidebar file annotations (DSH 0.1.6-alpha.1): select plain text, Markdown, or code in a workspace file preview and use the same annotate, save, and Enter-to-send flow. The editor and model-facing quote include the file path. After reloading and reopening the original file, its markers are restored; identical passages in different files remain separate. PDF, images, and HTML inside iframes are not covered.
 
 | Feature | Description |
 |---|---|
@@ -134,6 +132,10 @@ Environments without a service manager (e.g. some containers) often need **no re
 - **IME-safe**: the Enter interception carries `isComposing` / keyCode 229 guards; never hard-edits the composer textarea's DOM; `setDraft` only assembles the annotation block at the last moment before submit and never clobbers the user's draft
 - **No reliance on send-completion event chains**: bubble decoration uses MutationObserver + polling (`watchInputDraft` can be ineffective before the session is loaded at init; it is only a staging entry)
 - **Focus-chat compatible**: works inside the focus conversation view of [dsh-focus-chat](https://github.com/dingyi222666/dsh-focus-chat) — assistant rows there are `[data-focus-flow]` containers with a `*_assistant` CSS-Modules class (plus `data-streaming` while running); selection, annotation, reply chips, and re-anchoring all work in the focus tab alongside the main chat view
+
+## Developer testing
+
+[CI and DSH host testing](./docs/testing.md#english)
 
 ## Version history
 

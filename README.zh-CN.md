@@ -1,9 +1,5 @@
 # dsh-annotation
 
-CI 在 Node 22 与 24 上跑单元检查，不克隆 DSH 宿主。浏览器冒烟和发布验收在运行时解析 deepseek-ai/deepseek-harness 上最高的 `dsh-v*` 标签。版本号指 DSH 内核，不是 Desktop 外壳。
-
-侧边栏文件批注（DSH 0.1.6-alpha.1）：在工作区文件预览中选中文本、Markdown 或代码正文，即可沿用同一套批注、保存和回车发送流程。编辑器和发给模型的引用包含文件路径；刷新并重新打开原文件后恢复标记，同文不同文件可分别批注。当前不包含 PDF、图片或 iframe 内 HTML。
-
 <div align="center">
 
 [English](./README.md) · **简体中文**
@@ -27,6 +23,8 @@ CI 在 Node 22 与 24 上跑单元检查，不克隆 DSH 宿主。浏览器冒�
 形态：官方 **bundle 插件**（`dsh.bundle` + package.json `dsh.client` 声明，经 client-modules 注入浏览器端，Node half 为空实现）。**零核心改动**——不改 DSH 本体任何文件，`cordis.patch.yml` 仅一次 `insert` 自身 id，profile patch 保持 `[]`。
 
 ## 能力
+
+侧边栏文件批注（DSH 0.1.6-alpha.1）：在工作区文件预览中选中文本、Markdown 或代码正文，即可沿用同一套批注、保存和回车发送流程。编辑器和发给模型的引用包含文件路径；刷新并重新打开原文件后恢复标记，同文不同文件可分别批注。当前不包含 PDF、图片或 iframe 内 HTML。
 
 | 功能 | 说明 |
 |---|---|
@@ -134,6 +132,10 @@ systemctl --user restart dsh-web
 - **IME 安全**：Enter 拦截带 `isComposing`/keyCode 229 守卫；不 DOM 硬改 composer textarea；`setDraft` 仅在提交前一刻拼批注块，不覆盖用户草稿
 - **不依赖发送完成事件链**：气泡装饰走 MutationObserver + 轮询（`watchInputDraft` 在初始化时会话未加载时会失效，仅作暂存入口）
 - **聚焦对话兼容**：支持 [dsh-focus-chat](https://github.com/dingyi222666/dsh-focus-chat) 的聚焦会话视图——其助手行是 `[data-focus-flow]` 内 class 含 `*_assistant`（CSS Modules 哈希名）的容器（流式期间行带 `data-streaming`）；选区批注、回复芯片、角标重新定位在聚焦 tab 与主视图一样可用
+
+## 开发测试
+
+[CI 与 DSH 宿主测试](./docs/testing.md#简体中文)
 
 ## 版本历史
 
