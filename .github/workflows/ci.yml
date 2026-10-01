@@ -160,6 +160,23 @@ jobs:
           VARIANT: ${{ matrix.variant }}
         run: node scripts/run-host-enter.mjs --host "$DSH_ROOT" --plugin "$ANNOTATION_PLUGIN_DIR" --variant "$VARIANT" --artifacts "$ENTER_ARTIFACTS"
 
+      - name: Build the IME guard package for the historical host
+        if: matrix.variant == 'historical'
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm run build
+
+      - name: Reproduce the historical IME omission through RPC and physical JSONL
+        if: matrix.variant == 'historical'
+        env:
+          VARIANT: ${{ matrix.variant }}
+        run: node scripts/run-host-enter.mjs --host "$DSH_ROOT" --plugin "$ANNOTATION_PLUGIN_DIR" --variant "$VARIANT" --scenario ime-baseline --artifacts "$ENTER_ARTIFACTS/ime-baseline"
+
+      - name: IME guard from Chromium events through RPC and physical JSONL
+        env:
+          VARIANT: ${{ matrix.variant }}
+        run: node scripts/run-host-enter.mjs --host "$DSH_ROOT" --plugin "$GITHUB_WORKSPACE" --variant "$VARIANT" --scenario ime --artifacts "$ENTER_ARTIFACTS/ime"
+
       - name: Preserve Enter request and persistence evidence
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
