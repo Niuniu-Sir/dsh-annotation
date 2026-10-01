@@ -2102,6 +2102,18 @@ window.__ModuleLoader__.load({
         ? new ResizeObserver(onLayoutChange)
         : null
 
+      /** 待发送胶囊必须让开整个输入区：队列的「立即发送」按钮在卡片上方
+       *  的 dock 内（#60）。优先稳定的 data hook，旧宿主认完整 CSS local，
+       *  不能误中 composerSeatInner；没有 seat 的宿主仍以输入卡片为锚。 */
+      function composerSeatOf(card) {
+        var seat = card.closest('[data-composer-seat]')
+        if (seat !== null) return seat
+        for (var el = card.parentElement; el !== null; el = el.parentElement) {
+          if (/(^|\s)\S*_composerSeat(\s|$)/.test(el.getAttribute('class') || '')) return el
+        }
+        return card
+      }
+
       function updateChip() {
         if (ui.quotes.length === 0) {
           chipLayer.style.display = 'none'
@@ -2115,22 +2127,38 @@ window.__ModuleLoader__.load({
         chipLayer.appendChild(b)
         chipLayer.appendChild(document.createTextNode(plural('chip.count', ui.quotes.length)))
         var card = document.querySelector('[data-composer-card]')
-        if (card !== observedComposer) {
+        var seat = card === null ? null : composerSeatOf(card)
+        if (seat !== observedComposer) {
           if (composerObserver !== null) composerObserver.disconnect()
-          observedComposer = card
-          if (composerObserver !== null && card !== null) composerObserver.observe(card)
+          observedComposer = seat
+          // 队列增加/展开时卡片尺寸可能完全不变，要观察包含 dock 的 seat。
+          if (composerObserver !== null && seat !== null) composerObserver.observe(seat)
         }
-        if (card === null) { chipLayer.style.display = 'none'; return }
+        if (card === null) {
+          chipLayer.style.display = 'none'
+          clearTip(chipLayer)
+          return
+        }
         var r = card.getBoundingClientRect()
         if (r.width === 0 || r.height === 0 || r.right <= 0 || r.bottom <= 0
           || r.left >= window.innerWidth || r.top >= window.innerHeight) {
           chipLayer.style.display = 'none'
+          clearTip(chipLayer)
           return
         }
-        var w = chipLayer.offsetWidth || 80
-        chipLayer.style.left = Math.max(8, r.right - w - 12) + 'px'
-        chipLayer.style.top = Math.max(8, r.top - 30) + 'px'
+        // display:none 时 offsetWidth 为 0；先显示再量，首帧也能正确对齐长文案。
         chipLayer.style.display = 'flex'
+        var w = chipLayer.offsetWidth || 80
+        var h = chipLayer.offsetHeight || 24
+        var top = Math.min(r.top, seat.getBoundingClientRect().top) - h - 6
+        // 不能把胶囊钳回 seat 内而遮住队列控件；空间恢复后下一次布局刷新会重显。
+        if (top < 8) {
+          chipLayer.style.display = 'none'
+          clearTip(chipLayer)
+          return
+        }
+        chipLayer.style.left = Math.max(8, Math.min(r.right - w - 12, window.innerWidth - w - 8)) + 'px'
+        chipLayer.style.top = top + 'px'
       }
 
       // 悬停宽限：标签与面板间有间隙，鼠标跨越间隙的瞬间不在任何元素上——
