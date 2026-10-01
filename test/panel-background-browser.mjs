@@ -1,7 +1,7 @@
 // Run with PLAYWRIGHT_MODULE pointing to an existing Playwright installation.
 import assert from 'node:assert/strict'
 const { chromium } = await import(process.env.PLAYWRIGHT_MODULE || 'playwright')
-const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || '/usr/bin/chromium', headless: true })
+const browser = await chromium.launch({ ...(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : { channel: 'chrome' }), headless: true })
 try {
   for (const theme of [
     { layer: '#ffffff', base: '#fafafa', label: '#111111', expected: 'rgb(255, 255, 255)' },
