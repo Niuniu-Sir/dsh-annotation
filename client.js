@@ -1366,14 +1366,20 @@ window.__ModuleLoader__.load({
         // capture 阶段 setDraft 后 stopPropagation，主动 submit('queue')，保证
         // 纯批注能直接发出，同时不会把批注块明文留在输入框。
         if (e.key === 'Enter' && !e.shiftKey && !e.altKey
-          && ui.quotes.length > 0 && !isImeKeyBlocked(e)) {
+          && ui.quotes.length > 0) {
           // 双分支门控：DSH ≥0.1.2 是 div[data-composer-input] 输入区，≤0.1.1 是 textarea。
           // 1.4.6 适配 0.1.2 时移除了 textarea 分支，旧核心上 Enter 因此不再拼入批注块
           // （只剩发送按钮路径可用）。两条分支并行保留。
           var input = e.target instanceof Element &&
             (e.target.closest('[data-composer-input]') ||
               (e.target instanceof HTMLTextAreaElement && e.target.closest('[data-composer-card]')))
-          if (input !== null && input.closest('[data-composer-card]') !== null) {
+          if (input && input.closest('[data-composer-card]') !== null) {
+            if (isImeKeyBlocked(e)) {
+              // 宿主的合成尾窗可能短于这里的 50ms。仅在本来会拼批注的
+              // 手势上拦住宿主提交；不 preventDefault，保留输入法确认行为。
+              if (shouldGuardImeEnter(e)) e.stopPropagation()
+              return
+            }
             var attached = attachAndSend(e)
             if (attached && (e.ctrlKey || e.metaKey)) {
               e.preventDefault()
@@ -1904,6 +1910,20 @@ window.__ModuleLoader__.load({
        *  宿主输入机靠「草稿以命令 token 开头」维持命令声明。 */
       function isCommandDraft(draft) {
         return draft.trimStart().charAt(0) === '/'
+      }
+
+      /** 合成结束后的保护窗只拦住原本会携带批注的提交。
+       *  原生合成信号仍交给宿主编辑器，草稿读取不改动合成文本。 */
+      function shouldGuardImeEnter(e) {
+        if (imeClearTimer === null || e.isComposing === true || e.keyCode === 229) return false
+        var current = readCurrentSessionId()
+        if (current === undefined) return false
+        try {
+          var scoped = sessions.scope(current)
+          if (scoped === undefined) return false
+          var draft = ctx.conversation.input.for(scoped).state.getSnapshot().draft || ''
+          return shouldAttachForEnter(e, draft) && !isCommandDraft(draft)
+        } catch (_) { return false }
       }
 
       /** 提交前把批注块拼进 composer 草稿（随回车一起发送）。
