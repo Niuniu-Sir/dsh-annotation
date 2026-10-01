@@ -236,6 +236,8 @@ for (const busyEnter of ['queue', 'steer'] as const) {
         await writeComposerDraft(page, input, INITIAL)
         await input.press('Enter')
         await adapter.firstPaused
+        // Host progress and browser request notifications are separate streams.
+        await expect.poll(() => envelopes.filter(envelope => textOf(envelope.payload.args.request) === INITIAL).length).toBe(1)
         const initialRequest = envelopes.find(envelope => textOf(envelope.payload.args.request) === INITIAL)?.payload.args.request
         expect(initialRequest).toBeDefined()
         const found = await scaffold.ctx.sessionController.resolveAgent(initialRequest!.sessionId)
@@ -249,6 +251,8 @@ for (const busyEnter of ['queue', 'steer'] as const) {
         await input.press(busyEnter === 'queue' ? 'Enter' : 'Control+Enter')
         await expect.poll(() => agent.inbox.nextTurn.length).toBe(1)
         expect(agent.status).toBe('running')
+        // Backend admission can precede Playwright's request notification.
+        await expect.poll(() => envelopes.filter(envelope => textOf(envelope.payload.args.request) === EXISTING).length).toBe(1)
         const existingRequest = envelopes.find(envelope => textOf(envelope.payload.args.request) === EXISTING)?.payload.args.request
         expect(existingRequest?.mode).toBe('queue')
         await page.locator('[data-queue-dock]').getByText(EXISTING, { exact: true }).waitFor()
