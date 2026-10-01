@@ -39,6 +39,8 @@ Form: official **bundle plugin** (`dsh.bundle` + a `dsh.client` declaration in p
 | Numbered reply correspondence | A format instruction is injected into the message so the model replies `Annotation 1: …` … `Annotation N: …` one by one |
 | Reply annotation chips | `Annotation N:` in the reply renders as hoverable chips showing the passage + your note |
 
+With pending annotations, plain Enter submits the combined annotation block and question through the composer's queue path. In a running session it queues the message, even if the host's busy-Enter preference is Steer. Ctrl/Cmd+Enter with a nonempty question keeps the host gesture and leaves the annotations pending; with an empty draft it submits the annotations. Shift/Alt+Enter, IME confirmation, and slash commands keep their existing behavior.
+
 ## Interaction flow
 
 ```

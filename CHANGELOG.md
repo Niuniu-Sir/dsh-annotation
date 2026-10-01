@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### 修复
+- 修复运行中会话带文字 Enter 发送丢失批注块（#61）：成功拼稿后统一阻止宿主 keydown 继续传播，并通过 `submit('queue')` 提交最新的完整草稿，避开宿主 React 旧快照与 accelerated `steerQueue` 路径。空闲和运行中均只发出一条消息；运行中带批注的普通 Enter 按队列发送，不继承宿主忙时 Steer 偏好。带正文的 Cmd/Ctrl+Enter、Shift/Alt+Enter、输入法合成与斜杠命令仍走原有策略。
 - **修复「插件一运行客户端就卡死」**：装饰动作会改写宿主 DOM 并再次触发 `MutationObserver`，而越界编号在「不生成芯片、保留原文」的分支里仍然无条件 `replaceChild`——等于用一个内容相同的新节点替换原节点，mutation 永不收敛，装饰与观察者互相触发成自激，把主线程打满（表现为整个客户端失去响应）。现在一个可替换项都没有时**完全不碰 DOM**；另外给全量装饰加了 120ms 合并调度（首拍仍立即执行，保住「绘制前隐藏、零闪烁」），避免长会话里装饰自身滚成高频全量扫描。
 - 适配 DSH 0.1.7：`sessions.list` 快照不再暴露 `current`，当前会话 id 改经 `uiSession.adapter.current`（`binding.key`）读取，旧内核保留原字段兜底，会话切换订阅同步跟随。修复 0.1.7+ 上「批注标签在、但回车/发送按钮都没反应」——拼稿前取不到会话 id 会直接返回，空草稿时宿主又禁用发送，只有手动输入正文才发得出去。
 - 会话识别合成完整四级回退链（#68 与上条方案的合并，覆盖 DSH 0.1.1 ~ 0.2.0-rc.2，已对照 0.2.0-rc.2 内核源码逐项核实）：`uiSession.adapter.current`（0.1.7+）→ `localStorage['dsh.sessions.current']`（0.1.6-alpha.2 ~ 0.1.6 上唯一可用路径）→ 旧 list 快照 `current`（≤0.1.6-alpha.1）→ `retainedBy.mainView > 0` 公开成员兜底。取不到会话 id 时 toast 提示且批注保留待下一条重试（不再静默丢弃）；会话切换检测三层并行（uiSession source 订阅 / list.subscribe / 1s 轮询兜底），切换后重挂新会话草稿订阅，待发送批注跨会话、跨刷新正确恢复。方案与考证来自 @pinzza（#68），与 @fengbinmov 的 uiSession 读取（#65）合并。

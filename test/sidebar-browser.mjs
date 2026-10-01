@@ -23,9 +23,35 @@ try {
     await page.addScriptTag({ path: new URL('../client.js', import.meta.url).pathname })
     await page.evaluate(() => {
       window.draft = '请检查'
+      window.sent = []
+      window.hostSubmissions = 0
+      const subscribers = new Set()
+      const shell = {
+        state: {
+          getSnapshot: () => ({ draft: window.draft }),
+          subscribe(callback) { subscribers.add(callback); return () => subscribers.delete(callback) },
+        },
+        setDraft(value) {
+          window.draft = value
+          for (const callback of subscribers) callback()
+        },
+        submit(mode) {
+          window.sent.push({ text: window.draft, mode })
+          shell.setDraft('')
+        },
+      }
+      // Running-session regression (#61): the host bubble handler still owns
+      // the render-time draft when the plugin writes setDraft during capture.
+      const renderedDraft = window.draft
+      document.querySelector('[data-composer-card]').addEventListener('keydown', e => {
+        if (e.key !== 'Enter' || e.shiftKey || e.altKey || e.isComposing) return
+        window.hostSubmissions++
+        window.sent.push({ text: renderedDraft, mode: 'host-steer' })
+        shell.setDraft('')
+      })
       window.dispose = window.api.apply({ sessions: {
         list: { getSnapshot: () => ({ current: 'session' }), subscribe: () => () => {} }, scope: () => ({}),
-      }, conversation: { input: { for: () => ({ state: { getSnapshot: () => ({ draft: window.draft }), subscribe: () => () => {} }, setDraft: value => { window.draft = value } }) } } })
+      }, conversation: { input: { for: () => shell } } })
     })
   }
   const select = async (selector = '#quote') => {
@@ -75,8 +101,14 @@ try {
   assert.equal(await page.locator('.dsh-ann-input').inputValue(), '解释这个文件')
   await page.locator('.dsh-ann-card-head .dsh-ann-icon').click()
   await page.locator('[data-composer-input]').press('Enter')
-  const draft = await page.evaluate(() => window.draft)
-  assert.ok(draft.includes('[docs/a.md]') && draft.includes('[docs/b.md]'), '两份文件路径都随原文拼稿')
+  const send = await page.evaluate(() => ({ sent: window.sent, draft: window.draft, hostSubmissions: window.hostSubmissions }))
+  assert.equal(send.sent.length, 1, '带批注的 Enter 只提交一次')
+  assert.equal(send.sent[0].mode, 'queue', '运行中通过最新草稿的 queue 路径提交')
+  assert.ok(send.sent[0].text.includes('[docs/a.md]') && send.sent[0].text.includes('[docs/b.md]'), '两份文件路径都随原文发送')
+  assert.ok(send.sent[0].text.endsWith('提问：\n请检查'), '原始问题随批注发送')
+  assert.equal(send.hostSubmissions, 0, '捕获阶段提交后不进入读取旧草稿的宿主处理器')
+  assert.equal(send.draft, '', '发送后 composer 草稿清空')
+  assert.equal(await records(), null, '成功发送后待发送批注清空')
   for (const attr of ['data-textpreview-plain', 'data-code-preview']) {
     await page.evaluate(attr => {
       document.querySelector('[data-textpreview-body]').innerHTML = `<div ${attr}><pre id="quote">重复的原文</pre></div>`
@@ -84,7 +116,7 @@ try {
     }, attr)
     await add()
   }
-  assert.equal((await records()).length, 4, '文本、Markdown、代码选区均保存')
+  assert.equal((await records()).length, 2, '发送后新收集的文本、代码选区分别保存')
   await page.evaluate(() => document.querySelector('[data-textpreview-url]').setAttribute('data-textpreview-url', 'dsh-resource://file/session/other/docs/a.md'))
   await select()
   await page.waitForTimeout(350)
@@ -98,5 +130,5 @@ try {
   assert.equal(await page.locator('.dsh-ann-bar').count(), 0, '文件标题不是可批注正文')
   await page.evaluate(() => window.dispose())
   assert.deepEqual(errors, [])
-  console.log('PASS: 三种正文选区、来源路径、同文不同文件、切文件、刷新恢复、编辑、拼稿、会话隔离、畸形地址和标题排除')
+  console.log('PASS: 三种正文选区、来源路径、同文不同文件、切文件、刷新恢复、编辑、运行中 Enter 完整发送一次并清空批注、会话隔离、畸形地址和标题排除')
 } finally { await browser.close() }

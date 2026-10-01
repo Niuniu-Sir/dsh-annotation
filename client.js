@@ -12,7 +12,7 @@
 //   3. 输入框旁「批注 ×N」标签：悬浮可见全部内容、可逐条删除
 //   4. 回车发送：capture 阶段拦截 Enter（IME 守卫对齐官方 InputBar：isComposing /
 //      keyCode 229 + compositionend 后短延迟 latch）→ 批注块 prepend 进草稿
-//      （setDraft，不覆盖用户文字）→ composer 正常提交
+//      （setDraft，不覆盖用户文字）→ 直接 submit('queue')，阻止宿主用旧草稿再次提交
 //   5. 用户气泡不显示批注块：MutationObserver 微任务阶段（绘制前）按最后一个
 //      「提问：」切掉批注块、贴「批注 ×N」标签（hover 可见）；1s 轮询兜底 +
 //      历史消息自动修复（用户气泡是 MessageText 单文本节点，非 markdown）
@@ -1373,17 +1373,17 @@ window.__ModuleLoader__.load({
           return
         }
         // 【回车随输入框发送】在 composer 里按 Enter（且已收集批注、非输入法合成）：
-        // 提交前一刻把批注块拼进草稿，composer 自己的 Enter 提交继续——模型收到
-        // 批注清单 + 用户输入的问题。用户始终看不到文本被塞进去。
+        // 提交前一刻把批注块拼进草稿，然后直接提交——模型收到批注清单 + 用户
+        // 输入的问题。不能交回宿主 Enter：运行中会话的 React handler 可能仍读
+        // setDraft 前的渲染快照，导致只发出问题、丢失批注块（issue #61）。
         // IME 铁律（v1.3.10 修了 nativeEvent.keyCode；v1.3.11 补 compositionend
         // 后 Enter keyCode=13 的时序洞）：合成期 / 上屏确认 Enter 绝不能 setDraft。
         // 修饰键守卫（v1.3.18 修 issue #10）：Shift+Enter 换行、Alt+Enter 默认路径
         // 不触发拼稿；裸 Enter 继续处理带文字草稿，Cmd/Ctrl+Enter 只接管空草稿
-        // 的纯批注。已有文字时交回 composer，保留宿主的 Queue / Steer 策略。
-        // 纯批注的 Cmd/Ctrl+Enter 需要在这里直接提交：composer 的 accelerated 路径在
-        // 「运行中 + 有排队消息」时会走 steerQueue，而不是发送当前草稿；我们在
-        // capture 阶段 setDraft 后 stopPropagation，主动 submit('queue')，保证
-        // 纯批注能直接发出，同时不会把批注块明文留在输入框。
+        // 的纯批注；已有文字的 Cmd/Ctrl+Enter 仍原样交回 composer。
+        // 所有成功拼稿的 Enter 在 capture 阶段 stopPropagation + submit('queue')：
+        // 同时避开纯批注 accelerated 路径的 steerQueue 和带文字路径的旧草稿读取，
+        // 每次只提交一条「批注 + 问题」。运行中按普通消息排队，不抢占现有队列。
         if (e.key === 'Enter' && !e.shiftKey && !e.altKey
           && ui.quotes.length > 0 && !isImeKeyBlocked(e)) {
           // 双分支门控：DSH ≥0.1.2 是 div[data-composer-input] 输入区，≤0.1.1 是 textarea。
@@ -1394,7 +1394,7 @@ window.__ModuleLoader__.load({
               (e.target instanceof HTMLTextAreaElement && e.target.closest('[data-composer-card]')))
           if (input !== null && input.closest('[data-composer-card]') !== null) {
             var attached = attachAndSend(e)
-            if (attached && (e.ctrlKey || e.metaKey)) {
+            if (attached) {
               e.preventDefault()
               e.stopPropagation()
               submitAttached()
