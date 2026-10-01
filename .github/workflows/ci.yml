@@ -67,6 +67,7 @@ jobs:
 
       - name: Browser annotation interactions
         run: |
+          node test/panel-background-browser.mjs
           node test/overlay-browser.mjs
           node test/pending-chip-browser.mjs
           node test/sidebar-browser.mjs
