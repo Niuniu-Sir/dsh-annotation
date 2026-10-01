@@ -1,5 +1,5 @@
 /** Copied into the pinned DSH host's apps/web/tests by run-host-enter.mjs. */
-import { copyFile, mkdir, mkdtemp, readFile, rm, symlink, writeFile } from 'node:fs/promises'
+import { copyFile, mkdir, mkdtemp, readFile, realpath, rm, symlink, writeFile } from 'node:fs/promises'
 import { basename, dirname, join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { zstdDecompressSync } from 'node:zlib'
@@ -158,8 +158,35 @@ for (const busyEnter of ['queue', 'steer'] as const) {
         expect(clientUrl).toBeDefined()
         const servedClient = await page.request.get(new URL(clientUrl!, scaffold.baseUrl).href)
         expect(servedClient.ok()).toBe(true)
-        const sourceHash = createHash('sha256').update(await readFile(join(pluginDir!, 'client.js'))).digest('hex')
-        expect(createHash('sha256').update(await servedClient.body()).digest('hex')).toBe(sourceHash)
+        const selectedPath = join(pluginDir!, 'client.js')
+        const resolvedPath = scaffold.ctx.clientModules.clientPath('@changfenhuang/dsh-annotation')
+        expect(resolvedPath).toBeDefined()
+        expect(await realpath(resolvedPath!)).toBe(await realpath(selectedPath))
+        const selectedSource = await readFile(selectedPath)
+        const servedBody = await servedClient.body()
+        // Both pinned Hosts serve a one-entry combo: authored debugger
+        // trailers are removed, then a separator and indexed-map URL added.
+        // Match every executable byte, rather than comparing the raw file
+        // with this documented transport wrapper or accepting a substring.
+        let executable = selectedSource.toString('utf8')
+          .replace(/(?:\r?\n)?\/\/# sourceURL=([^\r\n]+)(?:\r?\n)?$/, '')
+          .replace(/(?:\r?\n)?\/\/# sourceMappingURL=[^\r\n]*(?:\r?\n)?$/, '')
+        if (!executable.endsWith('\n')) executable += '\n'
+        const mapUrl = clientUrl!.replace('/client.js&rev=', '/client.js.map&rev=')
+        expect(mapUrl).not.toBe(clientUrl)
+        // 0.2's trailer resolves from the script directory; 0.1.5 uses the
+        // absolute route. Keep the exact per-tag reference in the byte proof.
+        const mapReference = variant === 'current' ? mapUrl.replace(/^plugins\//, '') : mapUrl
+        const expectedBody = Buffer.from(`${executable};\n//# sourceMappingURL=${mapReference}\n`)
+        const hash = (bytes: Buffer): string => createHash('sha256').update(bytes).digest('hex')
+        await writeFile(join(caseDir, 'selected-client.js'), selectedSource)
+        await writeFile(join(caseDir, 'served-client.js'), servedBody)
+        await writeFile(join(caseDir, 'expected-served-client.js'), expectedBody)
+        await writeFile(join(caseDir, 'client-provenance.json'), JSON.stringify({
+          selectedPath, resolvedPath, clientUrl, mapUrl, mapReference,
+          selectedSha256: hash(selectedSource), servedSha256: hash(servedBody), expectedServedSha256: hash(expectedBody),
+        }, null, 2) + '\n')
+        expect(servedBody.equals(expectedBody)).toBe(true)
         await connectFreshWorkspace(page, scaffold.workspaceCwd)
         await setPreference(page, busyEnter)
         const input = page.locator('[data-composer-input][contenteditable="true"]').first()
