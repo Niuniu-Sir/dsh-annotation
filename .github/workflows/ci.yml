@@ -67,6 +67,9 @@ jobs:
 
       - name: Browser annotation interactions
         run: |
+          git fetch --depth 1 origin tag v1.4.10
+          git show v1.4.10:client.js > /tmp/annotation-1.4.10-client.js
+          BASELINE_CLIENT=/tmp/annotation-1.4.10-client.js node test/header-scroll-browser.mjs
           node test/panel-background-browser.mjs
           node test/overlay-browser.mjs
           node test/pending-chip-browser.mjs
