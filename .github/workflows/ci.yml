@@ -102,7 +102,6 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 60
     env:
-      DSH_ROOT: ${{ runner.temp }}/annotation-enter-${{ matrix.variant }}
       ENTER_ARTIFACTS: ${{ github.workspace }}/.artifacts/host-enter/${{ matrix.variant }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
@@ -122,6 +121,11 @@ jobs:
       - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1
         with:
           version: 11.7.0
+
+      - name: Set runner-local DSH checkout path
+        env:
+          VARIANT: ${{ matrix.variant }}
+        run: echo "DSH_ROOT=$RUNNER_TEMP/annotation-enter-$VARIANT" >> "$GITHUB_ENV"
 
       - name: Clone pinned DSH host
         env:
