@@ -85,6 +85,8 @@ window.__ModuleLoader__.load({
         '  font-family: inherit; font-size: 12px; line-height: 18px; cursor: pointer; }',
         '.dsh-ann-action:hover:not(:disabled) { background: var(--dsw-alias-button-primary-hover); }',
         '.dsh-ann-action:disabled { opacity: .4; cursor: default; }',
+        '.dsh-ann-danger { background: transparent; color: #e5484d; border: 1px solid var(--dsw-alias-border-inverted); }',
+        '.dsh-ann-danger:hover:not(:disabled) { background: var(--dsw-alias-interactive-bg-hover); }',
         '.dsh-ann-action svg { width: 12px; height: 12px; }',
         '.dsh-ann-icon { display: inline-flex; align-items: center; justify-content: center;',
         '  width: 28px; height: 28px; padding: 0; border: none; border-radius: 28px;',
@@ -92,27 +94,27 @@ window.__ModuleLoader__.load({
         '.dsh-ann-icon:hover { background: var(--dsw-alias-interactive-bg-hover);',
         '  color: var(--dsw-alias-label-secondary); }',
         '.dsh-ann-icon svg { width: 14px; height: 14px; }',
-        '.dsh-ann-card { position: fixed; z-index: 1201; width: 400px;',
-        '  max-width: calc(100vw - 16px); padding: 12px; border-radius: 12px;',
+        '.dsh-ann-card { position: fixed; z-index: 1201; width: 320px;',
+        '  max-width: calc(100vw - 16px); padding: 8px; border-radius: 10px;',
         '  border: 1px solid var(--dsw-alias-border-inverted);',
         '  background: var(--dsw-alias-bg-layer-2, var(--dsw-alias-bg-base, #2c2c2e));',
         '  box-shadow: var(--dsw-shadow-lv3);',
         '  font-family: var(--dsw-font-family, system-ui);',
         '  animation: dsh-ann-pop .12s var(--ds-ease-in-out, ease); }',
         '.dsh-ann-card-head { display: flex; align-items: center; justify-content: space-between;',
-        '  margin-bottom: 8px; cursor: move; touch-action: none; user-select: none; }',
-        '.dsh-ann-card-title { font-size: 13px; font-weight: 600;',
+        '  margin-bottom: 6px; cursor: move; touch-action: none; user-select: none; }',
+        '.dsh-ann-card-title { font-size: 12px; font-weight: 600;',
         '  color: var(--dsw-alias-label-primary); }',
         '.dsh-ann-card-headmain { display: flex; align-items: center; gap: 2px; min-width: 0; }',
-        '.dsh-ann-quote { font-size: 12px; line-height: 1.55;',
+        '.dsh-ann-quote { font-size: 11px; line-height: 1.5;',
         '  color: var(--dsw-alias-label-tertiary);',
         '  border-left: 2px solid var(--dsw-alias-border-inverted);',
         '  background: var(--dsw-alias-bg-layer-1);',
-        '  border-radius: 0 8px 8px 0; padding: 6px 10px; margin-bottom: 8px;',
-        '  max-height: 72px; overflow: hidden; word-break: break-word;',
+        '  border-radius: 0 6px 6px 0; padding: 4px 8px; margin-bottom: 6px;',
+        '  max-height: 34px; overflow: hidden; word-break: break-word;',
         '  display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; }',
-        '.dsh-ann-quotes { display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px;',
-        '  max-height: 150px; overflow-y: auto; }',
+        '.dsh-ann-quotes { display: flex; flex-direction: column; gap: 4px; margin-bottom: 6px;',
+        '  max-height: 84px; overflow-y: auto; }',
         '.dsh-ann-qitem { display: flex; align-items: flex-start; gap: 8px; padding: 6px 8px;',
         '  border-radius: 8px; background: var(--dsw-alias-bg-layer-1); }',
         '.dsh-ann-qnum { flex: none; display: inline-flex; align-items: center; justify-content: center;',
@@ -134,7 +136,7 @@ window.__ModuleLoader__.load({
         '.dsh-ann-qdel:hover { background: var(--dsw-alias-interactive-bg-hover);',
         '  color: var(--dsw-alias-label-secondary); }',
         '.dsh-ann-qdel svg { width: 10px; height: 10px; }',
-        '.dsh-ann-input { width: 100%; min-height: 64px; padding: 8px 10px;',
+        '.dsh-ann-input { width: 100%; min-height: 42px; max-height: 110px; resize: vertical; padding: 6px 8px;',
         '  border: 1px solid var(--dsw-alias-border-l2); border-radius: 8px;',
         '  background: var(--dsw-alias-bg-layer-1); color: var(--dsw-alias-label-primary);',
         '  font-family: inherit; font-size: 13px; line-height: 20px;',
@@ -1228,7 +1230,7 @@ window.__ModuleLoader__.load({
           var p = placeAbove(rect, 40, 0)
           if (ui.mode === 'actions' && ui.quote === text && (ui.source && ui.source.sourceUrl) === (source && source.sourceUrl)) {
             ui.lastKey = key
-            ui.pos = p
+            ui.pos = p; ui.rect = rect
             if (ui.el !== null && ui.el.style) {
               ui.el.style.left = p.left + 'px'
               ui.el.style.top = p.top + 'px'
@@ -1241,7 +1243,7 @@ window.__ModuleLoader__.load({
           ui.source = source
           ui.selectionRoot = rootEl
           ui.error = null
-          ui.pos = p
+          ui.pos = p; ui.rect = rect
           render()
         }, 250)
       }
@@ -1295,7 +1297,7 @@ window.__ModuleLoader__.load({
           lostSince = 0
           var p = placeAbove(rect, 40, 0)
           if (Math.abs(p.left - ui.pos.left) + Math.abs(p.top - ui.pos.top) > 2) {
-            ui.pos = p
+            ui.pos = p; ui.rect = rect
             if (ui.el !== null && ui.el.style) {
               ui.el.style.left = p.left + 'px'
               ui.el.style.top = p.top + 'px'
@@ -1532,12 +1534,24 @@ window.__ModuleLoader__.load({
           card.appendChild(ta)
           var row = document.createElement('div')
           row.className = 'dsh-ann-row'
+          var delBtn = document.createElement('button')
+          delBtn.type = 'button'
+          delBtn.className = 'dsh-ann-action dsh-ann-danger'
+          delBtn.title = t('edit.delete')
+          delBtn.appendChild(ICONS.trash())
+          delBtn.appendChild(document.createTextNode('删除'))
+          delBtn.addEventListener('click', function () {
+            var id = ui.editingId
+            closeToolbar()
+            if (id !== null) removeQuote(id)
+          })
           var save = document.createElement('button')
           save.type = 'button'
           save.className = 'dsh-ann-action'
           save.appendChild(ICONS.check())
           save.appendChild(document.createTextNode(t('edit.save')))
           save.addEventListener('click', saveAnnotation)
+          row.appendChild(delBtn)
           row.appendChild(save)
           card.appendChild(row)
           if (ui.error !== null) {
@@ -1556,10 +1570,17 @@ window.__ModuleLoader__.load({
       }
 
       function positionEditor(card, left, top) {
-        ui.pos = {
-          left: Math.max(8, Math.min(left, window.innerWidth - card.offsetWidth - 8)),
-          top: Math.max(8, Math.min(top, window.innerHeight - card.offsetHeight - 8)),
-        }
+          var w0 = card.offsetWidth
+          var h0 = card.offsetHeight
+          if (ui.rect) {
+            left = ui.rect.left
+            top = ui.rect.top - h0 - 8
+            if (top < 8) top = ui.rect.bottom + 8
+          }
+          ui.pos = {
+            left: Math.max(8, Math.min(left, window.innerWidth - w0 - 8)),
+            top: Math.max(8, Math.min(top, window.innerHeight - h0 - 8)),
+          }
         card.style.left = ui.pos.left + 'px'
         card.style.top = ui.pos.top + 'px'
       }
