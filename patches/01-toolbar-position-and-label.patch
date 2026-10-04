@@ -1,5 +1,5 @@
 ﻿diff --git "E:\\DSH_data\\_annot-src\\x\\omdsh-dev-dsh-annotation-14111b2\\client.js" "E:\\DSH_data\\dsh-annotation-fork-clone\\client.js"
-index c8e0c23..ccfe92c 100644
+index c8e0c23..2f7ee40 100644
 --- "E:\\DSH_data\\_annot-src\\x\\omdsh-dev-dsh-annotation-14111b2\\client.js"
 +++ "E:\\DSH_data\\dsh-annotation-fork-clone\\client.js"
 @@ -63,8 +63,8 @@ window.__ModuleLoader__.load({
@@ -13,7 +13,7 @@ index c8e0c23..ccfe92c 100644
          '  background: var(--dsw-alias-bg-layer-2, var(--dsw-alias-bg-base, #2c2c2e));',
          '  box-shadow: var(--dsw-shadow-lv3);',
          '  font-family: var(--dsw-font-family, system-ui);',
-@@ -78,41 +78,43 @@ window.__ModuleLoader__.load({
+@@ -78,41 +78,50 @@ window.__ModuleLoader__.load({
          '.dsh-ann-ghost:hover:not(:disabled) { background: var(--dsw-alias-interactive-bg-hover); }',
          '.dsh-ann-ghost:disabled { opacity: .45; cursor: default; }',
          '.dsh-ann-ghost svg { width: 14px; height: 14px; }',
@@ -27,8 +27,15 @@ index c8e0c23..ccfe92c 100644
          '.dsh-ann-action:hover:not(:disabled) { background: var(--dsw-alias-button-primary-hover); }',
          '.dsh-ann-action:disabled { opacity: .4; cursor: default; }',
 -        '.dsh-ann-action svg { width: 14px; height: 14px; }',
-+        '.dsh-ann-danger { background: transparent; color: #e5484d; border: 1px solid var(--dsw-alias-border-inverted); }',
++        '.dsh-ann-danger { background: transparent; color: #e5484d; border: 1px solid var(--dsw-alias-border-inverted); margin-right: auto; }',
 +        '.dsh-ann-danger:hover:not(:disabled) { background: var(--dsw-alias-interactive-bg-hover); }',
++        '.dsh-ann-plain { background: transparent; color: var(--dsw-alias-label-primary); border: 1px solid var(--dsw-alias-border-inverted); }',
++        '.dsh-ann-plain:hover:not(:disabled) { background: var(--dsw-alias-interactive-bg-hover); }',
++        '.dsh-ann-line { display: flex; align-items: center; gap: 6px; }',
++        '.dsh-ann-input-line { min-height: 26px; height: 26px; padding: 4px 9px; resize: none; overflow: hidden; }',
++        '.dsh-ann-send { flex: none; width: 26px; height: 26px; padding: 0; border: none; border-radius: 50%; background: #111; color: #fff; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; }',
++        '.dsh-ann-send svg { width: 13px; height: 13px; }',
++        '.dsh-ann-send:hover { filter: brightness(1.15); }',
 +        '.dsh-ann-action svg { width: 12px; height: 12px; }',
          '.dsh-ann-icon { display: inline-flex; align-items: center; justify-content: center;',
          '  width: 28px; height: 28px; padding: 0; border: none; border-radius: 28px;',
@@ -69,7 +76,7 @@ index c8e0c23..ccfe92c 100644
          '.dsh-ann-qitem { display: flex; align-items: flex-start; gap: 8px; padding: 6px 8px;',
          '  border-radius: 8px; background: var(--dsw-alias-bg-layer-1); }',
          '.dsh-ann-qnum { flex: none; display: inline-flex; align-items: center; justify-content: center;',
-@@ -134,7 +136,7 @@ window.__ModuleLoader__.load({
+@@ -134,7 +143,7 @@ window.__ModuleLoader__.load({
          '.dsh-ann-qdel:hover { background: var(--dsw-alias-interactive-bg-hover);',
          '  color: var(--dsw-alias-label-secondary); }',
          '.dsh-ann-qdel svg { width: 10px; height: 10px; }',
@@ -78,7 +85,7 @@ index c8e0c23..ccfe92c 100644
          '  border: 1px solid var(--dsw-alias-border-l2); border-radius: 8px;',
          '  background: var(--dsw-alias-bg-layer-1); color: var(--dsw-alias-label-primary);',
          '  font-family: inherit; font-size: 13px; line-height: 20px;',
-@@ -171,10 +173,10 @@ window.__ModuleLoader__.load({
+@@ -171,10 +180,10 @@ window.__ModuleLoader__.load({
      var STR = {
        zh: {
          actions: {
@@ -93,7 +100,7 @@ index c8e0c23..ccfe92c 100644
          },
          edit: {
            addTitle: '添加批注',
-@@ -861,15 +863,15 @@ window.__ModuleLoader__.load({
+@@ -861,15 +870,15 @@ window.__ModuleLoader__.load({
        return s.length > n ? s.slice(0, n) + '…' : s
      }
  
@@ -113,7 +120,7 @@ index c8e0c23..ccfe92c 100644
        var top
        if (belowFits) {
          top = belowTop
-@@ -1225,10 +1227,10 @@ window.__ModuleLoader__.load({
+@@ -1225,10 +1234,10 @@ window.__ModuleLoader__.load({
              || (source !== null && settleSessionId !== undefined && source.sessionId !== settleSessionId)) return
            var rect = r.getBoundingClientRect()
            if (rect.width === 0 || rect.height === 0) return
@@ -126,7 +133,7 @@ index c8e0c23..ccfe92c 100644
              if (ui.el !== null && ui.el.style) {
                ui.el.style.left = p.left + 'px'
                ui.el.style.top = p.top + 'px'
-@@ -1241,7 +1243,7 @@ window.__ModuleLoader__.load({
+@@ -1241,7 +1250,7 @@ window.__ModuleLoader__.load({
            ui.source = source
            ui.selectionRoot = rootEl
            ui.error = null
@@ -135,7 +142,7 @@ index c8e0c23..ccfe92c 100644
            render()
          }, 250)
        }
-@@ -1293,9 +1295,9 @@ window.__ModuleLoader__.load({
+@@ -1293,9 +1302,9 @@ window.__ModuleLoader__.load({
              return
            }
            lostSince = 0
@@ -147,7 +154,7 @@ index c8e0c23..ccfe92c 100644
              if (ui.el !== null && ui.el.style) {
                ui.el.style.left = p.left + 'px'
                ui.el.style.top = p.top + 'px'
-@@ -1474,7 +1476,7 @@ window.__ModuleLoader__.load({
+@@ -1474,7 +1483,7 @@ window.__ModuleLoader__.load({
            bar.style.top = ui.pos.top + 'px'
            var already = ui.quotes.some(function (q) { return q.text === ui.quote && (q.sourceUrl || '') === (ui.source && ui.source.sourceUrl || '') })
            bar.appendChild(ghostButton(
@@ -156,8 +163,51 @@ index c8e0c23..ccfe92c 100644
              already ? t('actions.already') : t('actions.annotate'),
              already ? t('actions.alreadyTitle') : t('actions.annotateTitle'),
              already,
-@@ -1532,12 +1534,24 @@ window.__ModuleLoader__.load({
-           card.appendChild(ta)
+@@ -1495,7 +1504,7 @@ window.__ModuleLoader__.load({
+           headMain.className = 'dsh-ann-card-headmain'
+           var title = document.createElement('div')
+           title.className = 'dsh-ann-card-title'
+-          title.textContent = ui.editingId !== null ? t('edit.editTitle') : t('edit.addTitle')
++          title.textContent = ui.editingId !== null ? t('edit.editTitle') : ''
+           headMain.appendChild(title)
+           // 编辑已有批注时，标题右侧紧邻一个删除按钮（新增批注没有可删对象）。
+           if (ui.editingId !== null) {
+@@ -1515,11 +1524,11 @@ window.__ModuleLoader__.load({
+           head.appendChild(headMain)
+           head.appendChild(iconButton('dsh-ann-icon', ICONS.close, t('common.cancel'), closeToolbar))
+           card.appendChild(head)
+-          var quote = document.createElement('div')
++          if (ui.editingId !== null) { var quote = document.createElement('div')
+           quote.className = 'dsh-ann-quote'
+           quote.textContent = truncate(quoteWithSource({ text: ui.quote, sourcePath: ui.source && ui.source.sourcePath }), 200)
+           quote.title = quoteWithSource({ text: ui.quote, sourcePath: ui.source && ui.source.sourcePath })
+-          card.appendChild(quote)
++          card.appendChild(quote) }
+           var ta = document.createElement('textarea')
+           ta.className = 'dsh-ann-input'
+           ta.placeholder = t('edit.placeholder')
+@@ -1529,17 +1538,52 @@ window.__ModuleLoader__.load({
+           ta.addEventListener('keydown', function (e) {
+             if (e.key === 'Enter' && !e.shiftKey && !isImeKeyBlocked(e)) { e.preventDefault(); saveAnnotation() }
+           })
+-          card.appendChild(ta)
++          if (ui.editingId === null) {
++               ta.rows = 1
++               ta.className = 'dsh-ann-input dsh-ann-input-line'
++               var line = document.createElement('div')
++               line.className = 'dsh-ann-line'
++               line.appendChild(ta)
++               var okBtn = document.createElement('button')
++               okBtn.type = 'button'
++               okBtn.className = 'dsh-ann-send'
++               okBtn.title = t('edit.save')
++               okBtn.appendChild(ICONS.check())
++               okBtn.addEventListener('click', saveAnnotation)
++               line.appendChild(okBtn)
++               card.appendChild(line)
++             } else {
++               card.appendChild(ta)
++             }
            var row = document.createElement('div')
            row.className = 'dsh-ann-row'
 +          var delBtn = document.createElement('button')
@@ -171,6 +221,11 @@ index c8e0c23..ccfe92c 100644
 +            closeToolbar()
 +            if (id !== null) removeQuote(id)
 +          })
++          var cancelBtn = document.createElement('button')
++          cancelBtn.type = 'button'
++          cancelBtn.className = 'dsh-ann-action dsh-ann-plain'
++          cancelBtn.appendChild(document.createTextNode('取消'))
++          cancelBtn.addEventListener('click', function () { closeToolbar() })
            var save = document.createElement('button')
            save.type = 'button'
            save.className = 'dsh-ann-action'
@@ -178,10 +233,15 @@ index c8e0c23..ccfe92c 100644
            save.appendChild(document.createTextNode(t('edit.save')))
            save.addEventListener('click', saveAnnotation)
 +          row.appendChild(delBtn)
++          row.appendChild(cancelBtn)
            row.appendChild(save)
-           card.appendChild(row)
+-          card.appendChild(row)
++          if (ui.editingId === null) { row.style.display = 'none' }
++             card.appendChild(row)
            if (ui.error !== null) {
-@@ -1556,10 +1570,17 @@ window.__ModuleLoader__.load({
+             var err = document.createElement('div')
+             err.className = 'dsh-ann-error'
+@@ -1556,10 +1600,17 @@ window.__ModuleLoader__.load({
        }
  
        function positionEditor(card, left, top) {
@@ -203,7 +263,7 @@ index c8e0c23..ccfe92c 100644
          card.style.left = ui.pos.left + 'px'
          card.style.top = ui.pos.top + 'px'
        }
-@@ -1881,7 +1902,7 @@ window.__ModuleLoader__.load({
+@@ -1881,7 +1932,7 @@ window.__ModuleLoader__.load({
          var range = locateQuote(q.text, q)
          var rect = range !== null ? range.getBoundingClientRect() : null
          ui.pos = rect !== null && rect.width > 0

@@ -85,8 +85,15 @@ window.__ModuleLoader__.load({
         '  font-family: inherit; font-size: 12px; line-height: 18px; cursor: pointer; }',
         '.dsh-ann-action:hover:not(:disabled) { background: var(--dsw-alias-button-primary-hover); }',
         '.dsh-ann-action:disabled { opacity: .4; cursor: default; }',
-        '.dsh-ann-danger { background: transparent; color: #e5484d; border: 1px solid var(--dsw-alias-border-inverted); }',
+        '.dsh-ann-danger { background: transparent; color: #e5484d; border: 1px solid var(--dsw-alias-border-inverted); margin-right: auto; }',
         '.dsh-ann-danger:hover:not(:disabled) { background: var(--dsw-alias-interactive-bg-hover); }',
+        '.dsh-ann-plain { background: transparent; color: var(--dsw-alias-label-primary); border: 1px solid var(--dsw-alias-border-inverted); }',
+        '.dsh-ann-plain:hover:not(:disabled) { background: var(--dsw-alias-interactive-bg-hover); }',
+        '.dsh-ann-line { display: flex; align-items: center; gap: 6px; }',
+        '.dsh-ann-input-line { min-height: 26px; height: 26px; padding: 4px 9px; resize: none; overflow: hidden; }',
+        '.dsh-ann-send { flex: none; width: 26px; height: 26px; padding: 0; border: none; border-radius: 50%; background: #111; color: #fff; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; }',
+        '.dsh-ann-send svg { width: 13px; height: 13px; }',
+        '.dsh-ann-send:hover { filter: brightness(1.15); }',
         '.dsh-ann-action svg { width: 12px; height: 12px; }',
         '.dsh-ann-icon { display: inline-flex; align-items: center; justify-content: center;',
         '  width: 28px; height: 28px; padding: 0; border: none; border-radius: 28px;',
@@ -1497,7 +1504,7 @@ window.__ModuleLoader__.load({
           headMain.className = 'dsh-ann-card-headmain'
           var title = document.createElement('div')
           title.className = 'dsh-ann-card-title'
-          title.textContent = ui.editingId !== null ? t('edit.editTitle') : t('edit.addTitle')
+          title.textContent = ui.editingId !== null ? t('edit.editTitle') : ''
           headMain.appendChild(title)
           // 编辑已有批注时，标题右侧紧邻一个删除按钮（新增批注没有可删对象）。
           if (ui.editingId !== null) {
@@ -1517,11 +1524,11 @@ window.__ModuleLoader__.load({
           head.appendChild(headMain)
           head.appendChild(iconButton('dsh-ann-icon', ICONS.close, t('common.cancel'), closeToolbar))
           card.appendChild(head)
-          var quote = document.createElement('div')
+          if (ui.editingId !== null) { var quote = document.createElement('div')
           quote.className = 'dsh-ann-quote'
           quote.textContent = truncate(quoteWithSource({ text: ui.quote, sourcePath: ui.source && ui.source.sourcePath }), 200)
           quote.title = quoteWithSource({ text: ui.quote, sourcePath: ui.source && ui.source.sourcePath })
-          card.appendChild(quote)
+          card.appendChild(quote) }
           var ta = document.createElement('textarea')
           ta.className = 'dsh-ann-input'
           ta.placeholder = t('edit.placeholder')
@@ -1531,7 +1538,23 @@ window.__ModuleLoader__.load({
           ta.addEventListener('keydown', function (e) {
             if (e.key === 'Enter' && !e.shiftKey && !isImeKeyBlocked(e)) { e.preventDefault(); saveAnnotation() }
           })
-          card.appendChild(ta)
+          if (ui.editingId === null) {
+               ta.rows = 1
+               ta.className = 'dsh-ann-input dsh-ann-input-line'
+               var line = document.createElement('div')
+               line.className = 'dsh-ann-line'
+               line.appendChild(ta)
+               var okBtn = document.createElement('button')
+               okBtn.type = 'button'
+               okBtn.className = 'dsh-ann-send'
+               okBtn.title = t('edit.save')
+               okBtn.appendChild(ICONS.check())
+               okBtn.addEventListener('click', saveAnnotation)
+               line.appendChild(okBtn)
+               card.appendChild(line)
+             } else {
+               card.appendChild(ta)
+             }
           var row = document.createElement('div')
           row.className = 'dsh-ann-row'
           var delBtn = document.createElement('button')
@@ -1545,6 +1568,11 @@ window.__ModuleLoader__.load({
             closeToolbar()
             if (id !== null) removeQuote(id)
           })
+          var cancelBtn = document.createElement('button')
+          cancelBtn.type = 'button'
+          cancelBtn.className = 'dsh-ann-action dsh-ann-plain'
+          cancelBtn.appendChild(document.createTextNode('取消'))
+          cancelBtn.addEventListener('click', function () { closeToolbar() })
           var save = document.createElement('button')
           save.type = 'button'
           save.className = 'dsh-ann-action'
@@ -1552,8 +1580,10 @@ window.__ModuleLoader__.load({
           save.appendChild(document.createTextNode(t('edit.save')))
           save.addEventListener('click', saveAnnotation)
           row.appendChild(delBtn)
+          row.appendChild(cancelBtn)
           row.appendChild(save)
-          card.appendChild(row)
+          if (ui.editingId === null) { row.style.display = 'none' }
+             card.appendChild(row)
           if (ui.error !== null) {
             var err = document.createElement('div')
             err.className = 'dsh-ann-error'
