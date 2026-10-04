@@ -26,11 +26,11 @@
 | 仓库 | https://github.com/Niuniu-Sir/dsh-annotation |
 | 修改部分版权 | `Copyright (c) 2026 Niuniu-Sir` |
 | 版本线 | 自 **v1.0.0** 起独立编号，**不跟进上游更新** |
-| 与上游的关系 | v1.0.0–v1.0.4 = 上游 v1.4.11 + 下列 15 项改动 |
+| 与上游的关系 | v1.0.0–v1.0.5 = 上游 v1.4.11 + 下列 16 项改动 |
 
 ## 三、修改清单（完整、可逐行核对）
 
-全部差异集中在 **1 个文件**（`client.js`），累计共 **97 行新增 / 45 行删除**，逐行补丁见
+全部差异集中在 **1 个文件**（`client.js`），累计共 **107 行新增 / 49 行删除**，逐行补丁见
 [`patches/01-toolbar-position-and-label.patch`](./patches/01-toolbar-position-and-label.patch)。
 
 | # | 改动 | 位置 | 原因 |
@@ -49,6 +49,7 @@
 | 12 | 新增框去掉标题栏与 ✕（React 端只渲染一行输入 + 圆形确认；回车即保存，留空也算标记） | 卡片 render 的 add 分支、`.dsh-ann-input-line`/`.dsh-ann-send` | 按使用者要求，打开即默认输入 |
 | 13 | 修正编辑卡定位：`openEditorFor()` 补记 `ui.rect`（此前用旧选区坐标） | `openEditorFor()` | 弹框必须锚定选中文字正上方 |
 | 14 | 打开后位置固定：移除卡片拖动与 `onLayoutChange` 中的重算 | `render()` / `onLayoutChange()` | 弹框不得移动 |
+| 15 | 新增框打开时，点框外任意处等效于回车（**确认保存**，留空也算标记；Esc 仍为取消） | `onDocPointerDown()` | 按使用者要求增加第三种确认方式 |
 
 **未改动**：颜色与主题变量、圆角、按钮数量（上游就是单个按钮）、发送格式（协议块）、锚点与滚动逻辑、界面语言体系与协议块。
 

@@ -1,5 +1,5 @@
 ﻿diff --git "E:\\DSH_data\\_annot-src\\x\\omdsh-dev-dsh-annotation-14111b2\\client.js" "E:\\DSH_data\\dsh-annotation-fork-clone\\client.js"
-index c8e0c23..c6e8e72 100644
+index c8e0c23..45a3d95 100644
 --- "E:\\DSH_data\\_annot-src\\x\\omdsh-dev-dsh-annotation-14111b2\\client.js"
 +++ "E:\\DSH_data\\dsh-annotation-fork-clone\\client.js"
 @@ -63,8 +63,8 @@ window.__ModuleLoader__.load({
@@ -142,7 +142,29 @@ index c8e0c23..c6e8e72 100644
            render()
          }, 250)
        }
-@@ -1271,7 +1280,7 @@ window.__ModuleLoader__.load({
+@@ -1255,11 +1264,17 @@ window.__ModuleLoader__.load({
+       host.addEventListener('pointerdown', onHostPointerDown)
+ 
+       function onDocPointerDown(e) {
+-        if (ui.mode === 'actions' && !host.contains(e.target) && !overlay.contains(e.target)) {
+-          closeToolbar()
++          if (ui.mode === 'actions' && !host.contains(e.target) && !overlay.contains(e.target)) {
++            closeToolbar()
++            return
++          }
++          // 新增批注：点框外任意处 = 按回车（确认保存），而不是取消
++          if (ui.mode === 'editing' && ui.editingId === null
++            && !host.contains(e.target) && !overlay.contains(e.target) && !numLayer.contains(e.target)) {
++            saveAnnotation()
++          }
+         }
+-      }
+-      document.addEventListener('pointerdown', onDocPointerDown, true)
++        document.addEventListener('pointerdown', onDocPointerDown, true)
+ 
+       var anchorRaf = false
+       var lostSince = 0
+@@ -1271,7 +1286,7 @@ window.__ModuleLoader__.load({
            anchorRaf = false
            if (ui.quotes.length > 0) renderMarkers()
            updateChip()
@@ -151,7 +173,7 @@ index c8e0c23..c6e8e72 100644
            if (ui.mode !== 'actions' || ui.quote === '') return
            var rect = null
            var sel = window.getSelection()
-@@ -1293,9 +1302,9 @@ window.__ModuleLoader__.load({
+@@ -1293,9 +1308,9 @@ window.__ModuleLoader__.load({
              return
            }
            lostSince = 0
@@ -163,7 +185,7 @@ index c8e0c23..c6e8e72 100644
              if (ui.el !== null && ui.el.style) {
                ui.el.style.left = p.left + 'px'
                ui.el.style.top = p.top + 'px'
-@@ -1474,7 +1483,7 @@ window.__ModuleLoader__.load({
+@@ -1474,7 +1489,7 @@ window.__ModuleLoader__.load({
            bar.style.top = ui.pos.top + 'px'
            var already = ui.quotes.some(function (q) { return q.text === ui.quote && (q.sourceUrl || '') === (ui.source && ui.source.sourceUrl || '') })
            bar.appendChild(ghostButton(
@@ -172,7 +194,7 @@ index c8e0c23..c6e8e72 100644
              already ? t('actions.already') : t('actions.annotate'),
              already ? t('actions.alreadyTitle') : t('actions.annotateTitle'),
              already,
-@@ -1490,12 +1499,12 @@ window.__ModuleLoader__.load({
+@@ -1490,12 +1505,12 @@ window.__ModuleLoader__.load({
            ui.el = card
            var head = document.createElement('div')
            head.className = 'dsh-ann-card-head'
@@ -187,7 +209,7 @@ index c8e0c23..c6e8e72 100644
            headMain.appendChild(title)
            // 编辑已有批注时，标题右侧紧邻一个删除按钮（新增批注没有可删对象）。
            if (ui.editingId !== null) {
-@@ -1513,33 +1522,68 @@ window.__ModuleLoader__.load({
+@@ -1513,33 +1528,68 @@ window.__ModuleLoader__.load({
              headMain.appendChild(del)
            }
            head.appendChild(headMain)
@@ -263,7 +285,7 @@ index c8e0c23..c6e8e72 100644
            if (ui.error !== null) {
              var err = document.createElement('div')
              err.className = 'dsh-ann-error'
-@@ -1556,10 +1600,17 @@ window.__ModuleLoader__.load({
+@@ -1556,10 +1606,17 @@ window.__ModuleLoader__.load({
        }
  
        function positionEditor(card, left, top) {
@@ -285,7 +307,7 @@ index c8e0c23..c6e8e72 100644
          card.style.left = ui.pos.left + 'px'
          card.style.top = ui.pos.top + 'px'
        }
-@@ -1880,8 +1931,9 @@ window.__ModuleLoader__.load({
+@@ -1880,8 +1937,9 @@ window.__ModuleLoader__.load({
          ui.pendingAnchor = null
          var range = locateQuote(q.text, q)
          var rect = range !== null ? range.getBoundingClientRect() : null

@@ -1264,11 +1264,17 @@ window.__ModuleLoader__.load({
       host.addEventListener('pointerdown', onHostPointerDown)
 
       function onDocPointerDown(e) {
-        if (ui.mode === 'actions' && !host.contains(e.target) && !overlay.contains(e.target)) {
-          closeToolbar()
+          if (ui.mode === 'actions' && !host.contains(e.target) && !overlay.contains(e.target)) {
+            closeToolbar()
+            return
+          }
+          // 新增批注：点框外任意处 = 按回车（确认保存），而不是取消
+          if (ui.mode === 'editing' && ui.editingId === null
+            && !host.contains(e.target) && !overlay.contains(e.target) && !numLayer.contains(e.target)) {
+            saveAnnotation()
+          }
         }
-      }
-      document.addEventListener('pointerdown', onDocPointerDown, true)
+        document.addEventListener('pointerdown', onDocPointerDown, true)
 
       var anchorRaf = false
       var lostSince = 0
