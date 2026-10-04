@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="760" height="212" viewBox="0 0 760 212" role="img" aria-label="编号角标与批注芯片">
+  <rect width="760" height="212" rx="10" fill="#f7f9fc"/>
+  <text x="28" y="34" font-family="system-ui, -apple-system, 'Segoe UI', 'Microsoft YaHei', sans-serif" font-size="13" font-weight="600" fill="#172347">④ 正文出现编号角标；输入框旁出现「批注 ×N」芯片</text>
+
+  <!-- paragraph with two markers -->
+  <rect x="32" y="62" width="250" height="11" rx="5.5" fill="#fbeecb"/>
+  <rect x="290" y="62" width="150" height="11" rx="5.5" fill="#fbeecb"/>
+  <circle cx="34" cy="54" r="9" fill="#4c9aff" stroke="#ffffff" stroke-width="1"/>
+  <text x="34" y="58" text-anchor="middle" font-family="system-ui, -apple-system, 'Segoe UI', 'Microsoft YaHei', sans-serif" font-size="10" font-weight="700" fill="#ffffff">1</text>
+  <rect x="32" y="86" width="196" height="11" rx="5.5" fill="#d7dce6"/>
+  <rect x="32" y="110" width="230" height="11" rx="5.5" fill="#fbeecb"/>
+  <rect x="270" y="110" width="120" height="11" rx="5.5" fill="#fbeecb"/>
+  <circle cx="34" cy="102" r="9" fill="#4c9aff" stroke="#ffffff" stroke-width="1"/>
+  <text x="34" y="106" text-anchor="middle" font-family="system-ui, -apple-system, 'Segoe UI', 'Microsoft YaHei', sans-serif" font-size="10" font-weight="700" fill="#ffffff">2</text>
+
+  <!-- composer + chip -->
+  <rect x="300" y="146" width="104" height="22" rx="11" fill="#ffffff" stroke="#d9dee8"/>
+  <text x="352" y="161" text-anchor="middle" font-family="system-ui, -apple-system, 'Segoe UI', 'Microsoft YaHei', sans-serif" font-size="11" fill="#172347">批注 ×2</text>
+  <rect x="32" y="152" width="700" height="30" rx="15" fill="#ffffff" stroke="#cfd8e6"/>
+  <rect x="48" y="163" width="180" height="9" rx="4.5" fill="#dde3ec"/>
+
+  <text x="32" y="202" font-family="system-ui, -apple-system, 'Segoe UI', 'Microsoft YaHei', sans-serif" font-size="11.5" fill="#5b6780">芯片悬停可看全部原文与备注、并可逐条删除；批注跨消息、跨轮次累积</text>
+</svg>

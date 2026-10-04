@@ -56,7 +56,8 @@
 ## 四、仓库层面的差异
 
 - 归档上游原始 README 到 `docs/upstream/`；上游 `CHANGELOG.md` 改名 `CHANGELOG.upstream.md`（原文未改）。
-- 新增本 `NOTICE.md` 与自有 `CHANGELOG.md`、重写根 `README.md`（内容以本改版为准）。
+- 新增本 `NOTICE.md` 与自有 `CHANGELOG.md`。
+- 重写根 `README.md`：说明本插件对标 OpenAI Codex 的「选中批注」交互、保留与去掉的能力、完整交互流程（`docs/images/` 6 张分段示意图）、功能清单、设计取舍与已知限制。
 - 移除上游产品站 `site/`、上游 CI 与发布工作流（`release.yml` 含 npm 发布步骤，属于上游的发布链，不适用于本改版）。
 
 ## 五、声明与免责

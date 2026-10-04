@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="760" height="176" viewBox="0 0 760 176" role="img" aria-label="选中文字后工具条出现在选区正上方">
+  <rect width="760" height="176" rx="10" fill="#f7f9fc"/>
+  <text x="28" y="34" font-family="system-ui, -apple-system, 'Segoe UI', 'Microsoft YaHei', sans-serif" font-size="13" font-weight="600" fill="#172347">① 选中助手回复里的文字 → 工具条出现在选区正上方</text>
+
+  <!-- toolbar pill -->
+  <rect x="120" y="52" width="116" height="30" rx="12" fill="#ffffff" stroke="#1c326b" stroke-width="1.2"/>
+  <text x="178" y="72" text-anchor="middle" font-family="system-ui, -apple-system, 'Segoe UI', 'Microsoft YaHei', sans-serif" font-size="12.5" fill="#172347">添加到对话</text>
+
+  <!-- mock paragraph -->
+  <rect x="32" y="104" width="286" height="11" rx="5.5" fill="#d7dce6"/>
+  <rect x="326" y="104" width="150" height="11" rx="5.5" fill="#d7dce6"/>
+  <rect x="32" y="124" width="196" height="11" rx="5.5" fill="#fbeecb"/>
+  <rect x="236" y="124" width="228" height="11" rx="5.5" fill="#fbeecb"/>
+  <rect x="472" y="124" width="96" height="11" rx="5.5" fill="#d7dce6"/>
+  <rect x="32" y="144" width="240" height="11" rx="5.5" fill="#d7dce6"/>
+
+  <text x="32" y="171" font-family="system-ui, -apple-system, 'Segoe UI', 'Microsoft YaHei', sans-serif" font-size="11.5" fill="#5b6780">工具条是单个「添加到对话」按钮（无 + 图标）；浅黄底为批注高亮</text>
+</svg>
