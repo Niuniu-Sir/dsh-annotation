@@ -63,7 +63,7 @@ window.__ModuleLoader__.load({
         '[data-annotation-for-dsh] { all: initial; }',
         '[data-annotation-for-dsh] * { box-sizing: border-box; }',
         '.dsh-ann-bar { position: fixed; z-index: 1200; display: flex; align-items: center;',
-        '  gap: 2px; padding: 4px; border-radius: 12px;',
+        '  gap: 0; padding: 2px; border-radius: 12px;',
         '  border: 1px solid var(--dsw-alias-border-inverted);',
         '  background: var(--dsw-alias-bg-layer-2, var(--dsw-alias-bg-base, #2c2c2e));',
         '  box-shadow: var(--dsw-shadow-lv3);',
@@ -78,14 +78,14 @@ window.__ModuleLoader__.load({
         '.dsh-ann-ghost:hover:not(:disabled) { background: var(--dsw-alias-interactive-bg-hover); }',
         '.dsh-ann-ghost:disabled { opacity: .45; cursor: default; }',
         '.dsh-ann-ghost svg { width: 14px; height: 14px; }',
-        '.dsh-ann-action { display: inline-flex; align-items: center; gap: 5px; height: 28px;',
-        '  padding: 0 12px; border: none; border-radius: 14px;',
+        '.dsh-ann-action { display: inline-flex; align-items: center; gap: 4px; height: 24px;',
+        '  padding: 0 9px; border: none; border-radius: 14px;',
         '  background: var(--dsw-alias-button-primary-fill);',
         '  color: var(--dsw-alias-label-primary-foreground);',
         '  font-family: inherit; font-size: 12px; line-height: 18px; cursor: pointer; }',
         '.dsh-ann-action:hover:not(:disabled) { background: var(--dsw-alias-button-primary-hover); }',
         '.dsh-ann-action:disabled { opacity: .4; cursor: default; }',
-        '.dsh-ann-action svg { width: 14px; height: 14px; }',
+        '.dsh-ann-action svg { width: 12px; height: 12px; }',
         '.dsh-ann-icon { display: inline-flex; align-items: center; justify-content: center;',
         '  width: 28px; height: 28px; padding: 0; border: none; border-radius: 28px;',
         '  background: transparent; color: var(--dsw-alias-label-tertiary); cursor: pointer; }',
@@ -171,10 +171,10 @@ window.__ModuleLoader__.load({
     var STR = {
       zh: {
         actions: {
-          annotate: '批注',
-          already: '已批注',
-          annotateTitle: '为选中的内容写一条批注',
-          alreadyTitle: '这段内容已在批注清单中',
+          annotate: '添加到对话',
+          already: '已添加',
+          annotateTitle: '把选中的内容添加到对话',
+          alreadyTitle: '这段内容已在对话清单中',
         },
         edit: {
           addTitle: '添加批注',
@@ -861,15 +861,15 @@ window.__ModuleLoader__.load({
       return s.length > n ? s.slice(0, n) + '…' : s
     }
 
-    function placeAbove(rect, height) {
-      var w = 400
-      var left = rect.left + rect.width / 2 - w / 2
+    function placeAbove(rect, height, wOpt) {
+      var w = (typeof wOpt === 'number') ? wOpt : 400
+      var left = w > 0 ? rect.left + rect.width / 2 - w / 2 : rect.left
       left = Math.max(8, Math.min(left, window.innerWidth - w - 8))
       // 下方优先：原生选中菜单（移动端长按菜单、桌面 Copy/Search 浮层）锚定在选区
       // 上沿附近，且原生 UI 恒绘制在页面内容之上（z-index 无效），工具条放上方必被
       // 遮挡；因此下方放得下就放下方，放不下才回上方。
       var belowTop = rect.bottom + 8
-      var belowFits = belowTop + height <= window.innerHeight - 8
+      var belowFits = false
       var top
       if (belowFits) {
         top = belowTop
@@ -1225,7 +1225,7 @@ window.__ModuleLoader__.load({
             || (source !== null && settleSessionId !== undefined && source.sessionId !== settleSessionId)) return
           var rect = r.getBoundingClientRect()
           if (rect.width === 0 || rect.height === 0) return
-          var p = placeAbove(rect, 40)
+          var p = placeAbove(rect, 40, 0)
           if (ui.mode === 'actions' && ui.quote === text && (ui.source && ui.source.sourceUrl) === (source && source.sourceUrl)) {
             ui.lastKey = key
             ui.pos = p
@@ -1293,7 +1293,7 @@ window.__ModuleLoader__.load({
             return
           }
           lostSince = 0
-          var p = placeAbove(rect, 40)
+          var p = placeAbove(rect, 40, 0)
           if (Math.abs(p.left - ui.pos.left) + Math.abs(p.top - ui.pos.top) > 2) {
             ui.pos = p
             if (ui.el !== null && ui.el.style) {
@@ -1881,7 +1881,7 @@ window.__ModuleLoader__.load({
         var range = locateQuote(q.text, q)
         var rect = range !== null ? range.getBoundingClientRect() : null
         ui.pos = rect !== null && rect.width > 0
-          ? placeAbove(rect, 40)
+          ? placeAbove(rect, 40, 0)
           : { left: 8, top: 8 }
         render()
       }

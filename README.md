@@ -1,4 +1,12 @@
-# dsh-annotation
+# dsh-annotation（中文界面的改版 / modified fork）
+
+> ⚠️ **This is an unofficial modified fork of [omdsh-dev/dsh-annotation](https://github.com/omdsh-dev/dsh-annotation).**
+> 本仓库是上游 **omdsh-dev/dsh-annotation**（MIT，`Copyright (c) 2026 omdsh-dev`）的**非官方改版**，基于 **v1.4.11**（提交 `14111b2`）。
+> 改动只有 1 个文件、15 行增 / 15 行删，全部记录在 [`patches/`](./patches/01-toolbar-position-and-label.patch)：
+> ① 工具条改为**选区上方**优先；② 修掉"按 400px 卡片算坐标导致工具条偏移压字"的问题；
+> ③ 按钮文案 `批注` → **`添加到对话`**；④ 尺寸收紧（更紧凑）。
+> **未改动**：颜色、圆角、按钮数量、发送格式、锚点逻辑。原作者版权与许可见 [`LICENSE`](./LICENSE) 与 [`NOTICE.md`](./NOTICE.md)。
+> 本改版与原作者无关联、未获背书。
 
 <div align="center">
 
