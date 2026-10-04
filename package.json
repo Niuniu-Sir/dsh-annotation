@@ -1,8 +1,9 @@
 {
   "name": "@changfenhuang/dsh-annotation",
-  "version": "1.4.11",
+  "version": "1.0.0",
   "type": "module",
-  "description": "DSH Web selection-annotation plugin: select assistant text, annotate (optional), and press Enter to send the annotation block with your message — the model replies to each annotation by number, with hoverable chips in the reply.",
+  "description": "dsh-annotation-zh — DSH Web 选中批注插件的自用改版（基于上游 omdsh-dev/dsh-annotation v1.4.11, MIT）。Self-maintained modified version of the DSH Web selection-annotation plugin: select assistant text, annotate (optional), press Enter to send the annotation block with your message. Not affiliated with the original author.",
+  "author": "omdsh-dev (original work, MIT) · Niuniu-Sir (modifications)",
   "main": "lib/index.js",
   "types": "lib/types/index.d.ts",
   "exports": {
@@ -20,9 +21,11 @@
     "client.js",
     "cordis.patch.yml",
     "README.md",
-    "README.zh-CN.md",
+    "NOTICE.md",
     "LICENSE",
-    "CHANGELOG.md"
+    "CHANGELOG.md",
+    "docs",
+    "patches"
   ],
   "scripts": {
     "build": "node -e \"require('node:fs').rmSync('lib', { recursive: true, force: true })\" && tsc -p tsconfig.json",
@@ -35,7 +38,17 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/omdsh-dev/dsh-annotation.git"
+    "url": "git+https://github.com/Niuniu-Sir/dsh-annotation.git"
+  },
+  "upstream": {
+    "name": "dsh-annotation",
+    "repository": "https://github.com/omdsh-dev/dsh-annotation",
+    "package": "@changfenhuang/dsh-annotation",
+    "version": "1.4.11",
+    "commit": "14111b2",
+    "license": "MIT",
+    "copyright": "Copyright (c) 2026 omdsh-dev",
+    "note": "Unmodified upstream LICENSE is kept in LICENSE; see NOTICE.md for the full attribution and change list. This repo does not track upstream updates."
   },
   "peerDependencies": {
     "cordis": "^4.0.0-rc.7 || ^4.0.1"
