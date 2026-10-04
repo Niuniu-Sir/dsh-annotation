@@ -64,7 +64,7 @@ window.__ModuleLoader__.load({
         '[data-annotation-for-dsh] * { box-sizing: border-box; }',
         '.dsh-ann-bar { position: fixed; z-index: 1200; display: flex; align-items: center;',
         '  gap: 0; padding: 2px; border-radius: 12px;',
-        '  border: 1px solid var(--dsw-alias-border-inverted);',
+        '  border: 1px solid var(--maid-navy-800, #1c326b);',
         '  background: var(--dsw-alias-bg-layer-2, var(--dsw-alias-bg-base, #2c2c2e));',
         '  box-shadow: var(--dsw-shadow-lv3);',
         '  font-family: var(--dsw-font-family, system-ui);',
@@ -1474,7 +1474,7 @@ window.__ModuleLoader__.load({
           bar.style.top = ui.pos.top + 'px'
           var already = ui.quotes.some(function (q) { return q.text === ui.quote && (q.sourceUrl || '') === (ui.source && ui.source.sourceUrl || '') })
           bar.appendChild(ghostButton(
-            already ? null : ICONS.plus,
+            null,
             already ? t('actions.already') : t('actions.annotate'),
             already ? t('actions.alreadyTitle') : t('actions.annotateTitle'),
             already,

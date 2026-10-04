@@ -1,16 +1,18 @@
-﻿diff --git "E:\\DSH_data\\_annot-src\\x\\omdsh-dev-dsh-annotation-14111b2\\client.js" "E:\\DSH_data\\dsh-annotation-fork\\client.js"
-index c8e0c23..0499c5d 100644
+﻿diff --git "E:\\DSH_data\\_annot-src\\x\\omdsh-dev-dsh-annotation-14111b2\\client.js" "E:\\DSH_data\\dsh-annotation-fork-clone\\client.js"
+index c8e0c23..c538e22 100644
 --- "E:\\DSH_data\\_annot-src\\x\\omdsh-dev-dsh-annotation-14111b2\\client.js"
-+++ "E:\\DSH_data\\dsh-annotation-fork\\client.js"
-@@ -63,7 +63,7 @@ window.__ModuleLoader__.load({
++++ "E:\\DSH_data\\dsh-annotation-fork-clone\\client.js"
+@@ -63,8 +63,8 @@ window.__ModuleLoader__.load({
          '[data-annotation-for-dsh] { all: initial; }',
          '[data-annotation-for-dsh] * { box-sizing: border-box; }',
          '.dsh-ann-bar { position: fixed; z-index: 1200; display: flex; align-items: center;',
 -        '  gap: 2px; padding: 4px; border-radius: 12px;',
+-        '  border: 1px solid var(--dsw-alias-border-inverted);',
 +        '  gap: 0; padding: 2px; border-radius: 12px;',
-         '  border: 1px solid var(--dsw-alias-border-inverted);',
++        '  border: 1px solid var(--maid-navy-800, #1c326b);',
          '  background: var(--dsw-alias-bg-layer-2, var(--dsw-alias-bg-base, #2c2c2e));',
          '  box-shadow: var(--dsw-shadow-lv3);',
+         '  font-family: var(--dsw-font-family, system-ui);',
 @@ -78,14 +78,14 @@ window.__ModuleLoader__.load({
          '.dsh-ann-ghost:hover:not(:disabled) { background: var(--dsw-alias-interactive-bg-hover); }',
          '.dsh-ann-ghost:disabled { opacity: .45; cursor: default; }',
@@ -82,6 +84,15 @@ index c8e0c23..0499c5d 100644
            if (Math.abs(p.left - ui.pos.left) + Math.abs(p.top - ui.pos.top) > 2) {
              ui.pos = p
              if (ui.el !== null && ui.el.style) {
+@@ -1474,7 +1474,7 @@ window.__ModuleLoader__.load({
+           bar.style.top = ui.pos.top + 'px'
+           var already = ui.quotes.some(function (q) { return q.text === ui.quote && (q.sourceUrl || '') === (ui.source && ui.source.sourceUrl || '') })
+           bar.appendChild(ghostButton(
+-            already ? null : ICONS.plus,
++            null,
+             already ? t('actions.already') : t('actions.annotate'),
+             already ? t('actions.alreadyTitle') : t('actions.annotateTitle'),
+             already,
 @@ -1881,7 +1881,7 @@ window.__ModuleLoader__.load({
          var range = locateQuote(q.text, q)
          var rect = range !== null ? range.getBoundingClientRect() : null
