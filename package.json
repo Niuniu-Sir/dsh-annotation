@@ -1,6 +1,6 @@
 {
   "name": "@changfenhuang/dsh-annotation",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "type": "module",
   "description": "dsh-annotation-zh — DSH Web 选中批注插件的自用改版（基于上游 omdsh-dev/dsh-annotation v1.4.11, MIT）。Self-maintained modified version of the DSH Web selection-annotation plugin: select assistant text, annotate (optional), press Enter to send the annotation block with your message. Not affiliated with the original author.",
   "author": "omdsh-dev (original work, MIT) · Niuniu-Sir (modifications)",

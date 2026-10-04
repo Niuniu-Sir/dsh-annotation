@@ -109,7 +109,7 @@ window.__ModuleLoader__.load({
         '  font-family: var(--dsw-font-family, system-ui);',
         '  animation: dsh-ann-pop .12s var(--ds-ease-in-out, ease); }',
         '.dsh-ann-card-head { display: flex; align-items: center; justify-content: space-between;',
-        '  margin-bottom: 6px; cursor: move; touch-action: none; user-select: none; }',
+        '  margin-bottom: 6px; touch-action: none; user-select: none; }',
         '.dsh-ann-card-title { font-size: 12px; font-weight: 600;',
         '  color: var(--dsw-alias-label-primary); }',
         '.dsh-ann-card-headmain { display: flex; align-items: center; gap: 2px; min-width: 0; }',
@@ -1280,7 +1280,7 @@ window.__ModuleLoader__.load({
           anchorRaf = false
           if (ui.quotes.length > 0) renderMarkers()
           updateChip()
-          if (ui.mode === 'editing' && ui.el !== null) positionEditor(ui.el, ui.pos.left, ui.pos.top)
+          /* 编辑框打开后位置固定：不随滚动/尺寸变化重算 */
           if (ui.mode !== 'actions' || ui.quote === '') return
           var rect = null
           var sel = window.getSelection()
@@ -1499,7 +1499,7 @@ window.__ModuleLoader__.load({
           ui.el = card
           var head = document.createElement('div')
           head.className = 'dsh-ann-card-head'
-          makeEditorDraggable(head, card)
+          void 0 /* 固定定位：不提供拖动，避免框移动 */
           var headMain = document.createElement('div')
           headMain.className = 'dsh-ann-card-headmain'
           var title = document.createElement('div')
@@ -1522,8 +1522,8 @@ window.__ModuleLoader__.load({
             headMain.appendChild(del)
           }
           head.appendChild(headMain)
-          head.appendChild(iconButton('dsh-ann-icon', ICONS.close, t('common.cancel'), closeToolbar))
-          card.appendChild(head)
+          if (ui.editingId !== null) { head.appendChild(iconButton('dsh-ann-icon', ICONS.close, t('common.cancel'), closeToolbar)) }
+          if (ui.editingId !== null) { card.appendChild(head) }
           if (ui.editingId !== null) { var quote = document.createElement('div')
           quote.className = 'dsh-ann-quote'
           quote.textContent = truncate(quoteWithSource({ text: ui.quote, sourcePath: ui.source && ui.source.sourcePath }), 200)
@@ -1531,7 +1531,7 @@ window.__ModuleLoader__.load({
           card.appendChild(quote) }
           var ta = document.createElement('textarea')
           ta.className = 'dsh-ann-input'
-          ta.placeholder = t('edit.placeholder')
+          ta.placeholder = ui.editingId === null ? '添加批注…' : t('edit.placeholder')
           ta.value = ui.noteDraft
           ta.spellcheck = false
           ta.addEventListener('input', function () { ui.noteDraft = ta.value })
@@ -1931,7 +1931,8 @@ window.__ModuleLoader__.load({
         ui.pendingAnchor = null
         var range = locateQuote(q.text, q)
         var rect = range !== null ? range.getBoundingClientRect() : null
-        ui.pos = rect !== null && rect.width > 0
+        ui.rect = rect !== null && rect.width > 0 ? rect : null
+              ui.pos = rect !== null && rect.width > 0
           ? placeAbove(rect, 40, 0)
           : { left: 8, top: 8 }
         render()

@@ -1,5 +1,5 @@
 ﻿diff --git "E:\\DSH_data\\_annot-src\\x\\omdsh-dev-dsh-annotation-14111b2\\client.js" "E:\\DSH_data\\dsh-annotation-fork-clone\\client.js"
-index c8e0c23..2f7ee40 100644
+index c8e0c23..c6e8e72 100644
 --- "E:\\DSH_data\\_annot-src\\x\\omdsh-dev-dsh-annotation-14111b2\\client.js"
 +++ "E:\\DSH_data\\dsh-annotation-fork-clone\\client.js"
 @@ -63,8 +63,8 @@ window.__ModuleLoader__.load({
@@ -55,7 +55,7 @@ index c8e0c23..2f7ee40 100644
          '.dsh-ann-card-head { display: flex; align-items: center; justify-content: space-between;',
 -        '  margin-bottom: 8px; cursor: move; touch-action: none; user-select: none; }',
 -        '.dsh-ann-card-title { font-size: 13px; font-weight: 600;',
-+        '  margin-bottom: 6px; cursor: move; touch-action: none; user-select: none; }',
++        '  margin-bottom: 6px; touch-action: none; user-select: none; }',
 +        '.dsh-ann-card-title { font-size: 12px; font-weight: 600;',
          '  color: var(--dsw-alias-label-primary); }',
          '.dsh-ann-card-headmain { display: flex; align-items: center; gap: 2px; min-width: 0; }',
@@ -142,6 +142,15 @@ index c8e0c23..2f7ee40 100644
            render()
          }, 250)
        }
+@@ -1271,7 +1280,7 @@ window.__ModuleLoader__.load({
+           anchorRaf = false
+           if (ui.quotes.length > 0) renderMarkers()
+           updateChip()
+-          if (ui.mode === 'editing' && ui.el !== null) positionEditor(ui.el, ui.pos.left, ui.pos.top)
++          /* 编辑框打开后位置固定：不随滚动/尺寸变化重算 */
+           if (ui.mode !== 'actions' || ui.quote === '') return
+           var rect = null
+           var sel = window.getSelection()
 @@ -1293,9 +1302,9 @@ window.__ModuleLoader__.load({
              return
            }
@@ -163,7 +172,13 @@ index c8e0c23..2f7ee40 100644
              already ? t('actions.already') : t('actions.annotate'),
              already ? t('actions.alreadyTitle') : t('actions.annotateTitle'),
              already,
-@@ -1495,7 +1504,7 @@ window.__ModuleLoader__.load({
+@@ -1490,12 +1499,12 @@ window.__ModuleLoader__.load({
+           ui.el = card
+           var head = document.createElement('div')
+           head.className = 'dsh-ann-card-head'
+-          makeEditorDraggable(head, card)
++          void 0 /* 固定定位：不提供拖动，避免框移动 */
+           var headMain = document.createElement('div')
            headMain.className = 'dsh-ann-card-headmain'
            var title = document.createElement('div')
            title.className = 'dsh-ann-card-title'
@@ -172,11 +187,15 @@ index c8e0c23..2f7ee40 100644
            headMain.appendChild(title)
            // 编辑已有批注时，标题右侧紧邻一个删除按钮（新增批注没有可删对象）。
            if (ui.editingId !== null) {
-@@ -1515,11 +1524,11 @@ window.__ModuleLoader__.load({
+@@ -1513,33 +1522,68 @@ window.__ModuleLoader__.load({
+             headMain.appendChild(del)
+           }
            head.appendChild(headMain)
-           head.appendChild(iconButton('dsh-ann-icon', ICONS.close, t('common.cancel'), closeToolbar))
-           card.appendChild(head)
+-          head.appendChild(iconButton('dsh-ann-icon', ICONS.close, t('common.cancel'), closeToolbar))
+-          card.appendChild(head)
 -          var quote = document.createElement('div')
++          if (ui.editingId !== null) { head.appendChild(iconButton('dsh-ann-icon', ICONS.close, t('common.cancel'), closeToolbar)) }
++          if (ui.editingId !== null) { card.appendChild(head) }
 +          if (ui.editingId !== null) { var quote = document.createElement('div')
            quote.className = 'dsh-ann-quote'
            quote.textContent = truncate(quoteWithSource({ text: ui.quote, sourcePath: ui.source && ui.source.sourcePath }), 200)
@@ -185,8 +204,11 @@ index c8e0c23..2f7ee40 100644
 +          card.appendChild(quote) }
            var ta = document.createElement('textarea')
            ta.className = 'dsh-ann-input'
-           ta.placeholder = t('edit.placeholder')
-@@ -1529,17 +1538,52 @@ window.__ModuleLoader__.load({
+-          ta.placeholder = t('edit.placeholder')
++          ta.placeholder = ui.editingId === null ? '添加批注…' : t('edit.placeholder')
+           ta.value = ui.noteDraft
+           ta.spellcheck = false
+           ta.addEventListener('input', function () { ui.noteDraft = ta.value })
            ta.addEventListener('keydown', function (e) {
              if (e.key === 'Enter' && !e.shiftKey && !isImeKeyBlocked(e)) { e.preventDefault(); saveAnnotation() }
            })
@@ -263,11 +285,14 @@ index c8e0c23..2f7ee40 100644
          card.style.left = ui.pos.left + 'px'
          card.style.top = ui.pos.top + 'px'
        }
-@@ -1881,7 +1932,7 @@ window.__ModuleLoader__.load({
+@@ -1880,8 +1931,9 @@ window.__ModuleLoader__.load({
+         ui.pendingAnchor = null
          var range = locateQuote(q.text, q)
          var rect = range !== null ? range.getBoundingClientRect() : null
-         ui.pos = rect !== null && rect.width > 0
+-        ui.pos = rect !== null && rect.width > 0
 -          ? placeAbove(rect, 40)
++        ui.rect = rect !== null && rect.width > 0 ? rect : null
++              ui.pos = rect !== null && rect.width > 0
 +          ? placeAbove(rect, 40, 0)
            : { left: 8, top: 8 }
          render()
