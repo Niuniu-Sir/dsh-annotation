@@ -26,11 +26,11 @@
 | 仓库 | https://github.com/Niuniu-Sir/dsh-annotation |
 | 修改部分版权 | `Copyright (c) 2026 Niuniu-Sir` |
 | 版本线 | 自 **v1.0.0** 起独立编号，**不跟进上游更新** |
-| 与上游的关系 | v1.0.0–v1.0.11 = 上游 v1.4.11 + 下列 20 项改动 |
+| 与上游的关系 | v1.0.0–v1.0.12 = 上游 v1.4.11 + 下列 21 项改动 |
 
 ## 三、修改清单（完整、可逐行核对）
 
-全部差异集中在 **1 个文件**（`client.js`），累计共 **147 行新增 / 82 行删除**，逐行补丁见
+全部差异集中在 **1 个文件**（`client.js`），累计共 **148 行新增 / 83 行删除**，逐行补丁见
 [`patches/01-toolbar-position-and-label.patch`](./patches/01-toolbar-position-and-label.patch)。
 
 | # | 改动 | 位置 | 原因 |
@@ -55,6 +55,7 @@
 | 18 | 深色模式适配：写死颜色改走宿主主题 token——工具条边框 `#1c326b` 改为 `var(--maid-navy-800, var(--dsw-alias-border-inverted, #1c326b))`；发送键 `#111/#fff` 改为 `--dsw-alias-button-primary-fill`/`--dsw-alias-label-primary-foreground`；删除与错误红改为 `--dsw-alias-state-error-primary`；编号白字改为 `--dsw-alias-label-primary-foreground` | `.dsh-ann-bar`、`.dsh-ann-send`、`.dsh-ann-danger`、`.dsh-ann-qnum`/`.dsh-ann-num` 及两处内联样式 | 深色模式下纯黑发送键、固定深蓝边框与主题不协调；要求插件底色/强调色随主题一致 |
 | 19 | 编号角标收紧：`.dsh-ann-num` 由 `16×16/10px、padding 0 4px`（内容盒约 26×18）改为 `border-box 14×14/9px、padding 0 2px、line-height 1、tabular-nums`；`.dsh-ann-qnum` 同步 `14×14/9px`；定位常量宽高 `26/18→14/14`、上沿 `20→16`、碰撞步长 `18→14`、视口边距同步收紧 | `.dsh-ann-num`、`.dsh-ann-qnum`、`buildMarkers()` 内定位常量 | 数字在角标里显得空、角标比文字大 |
 | 20 | 编辑批注卡移除「被批注原文」预览块（`.dsh-ann-quote`）：页面上已有高亮与编号标注位置，原文预览重复；改后卡片只剩标题、删除、输入框与取消/保存。提交时协议块仍携带原文与备注 | `render()` 编辑分支 | 原文信息在卡片里重复显示，用户要求去掉 |
+| 21 | 编号角标改方正造型：`.dsh-ann-num` 圆角 `7→2px`（14×14 小方块，多位数自动加宽）、边框透明度 `.3→.25`、投影 `0 1px 4px/.35 → 0 1px 2px/.3`；`.dsh-ann-qnum` 同步 `2px` | `.dsh-ann-num`、`.dsh-ann-qnum` | 圆角+大投影的胶囊造型被认为不好看，要求方正 |
 
 **未改动**：颜色与主题变量、圆角、按钮数量（上游就是单个按钮）、发送格式（协议块）、锚点与滚动逻辑、界面语言体系与协议块。
 
