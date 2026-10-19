@@ -102,7 +102,7 @@ window.__ModuleLoader__.load({
         '.dsh-ann-mic:disabled { opacity: .4; cursor: default; }',
         '.dsh-ann-input-wrap { position: relative; flex: 1; min-width: 0; display: flex; }',
         '.dsh-ann-input-wrap .dsh-ann-input-line { width: 100%; padding-right: 30px; }',
-        '.dsh-ann-mic-inline { position: absolute; right: 3px; top: 50%; transform: translateY(-50%); width: 22px; height: 22px; border: none; background: transparent; }',
+        '.dsh-ann-mic-inline { position: absolute; z-index: 2; right: 4px; top: 50%; transform: translateY(-50%); width: 24px; height: 24px; border: 1px solid var(--dsw-alias-border-l2); background: var(--dsw-alias-bg-layer-2, var(--dsw-alias-bg-base)); }',
         '.dsh-ann-mic-inline svg { width: 12px; height: 12px; }',
         '.dsh-ann-mic-inline:hover:not(:disabled) { background: var(--dsw-alias-interactive-bg-hover); }',
         '@keyframes dsh-ann-pulse { 0%, 100% { opacity: 1; } 50% { opacity: .45; } }',
@@ -1503,10 +1503,30 @@ window.__ModuleLoader__.load({
       var voice = { recorder: null, stream: null, chunks: [], busy: false, cancel: false }
       function speechService() {
         try {
-          var remote = (ctx.remote !== undefined && ctx.remote !== null) ? ctx.remote : ctx.get('remote')
+          var remote = (ctx.remote !== undefined && ctx.remote !== null) ? ctx.remote : null
+          if (remote === null && typeof ctx.get === 'function') {
+            var names = ['remote', 'apiRemotes', 'typertRemote', 'gateway']
+            for (var i = 0; i < names.length; i++) {
+              try { var cand = ctx.get(names[i]); if (cand) { remote = cand; break } } catch (_) {}
+            }
+          }
           if (remote === null || remote === undefined) return null
           return (remote.speech !== undefined && remote.speech !== null) ? remote.speech : null
         } catch (_) { return null }
+      }
+      function voiceDebugInfo() {
+        try {
+          var keys = []
+          for (var k in ctx) { if (k.charAt(0) !== '_' && typeof ctx[k] !== 'function') keys.push(k) }
+          var hasRemote = (ctx.remote !== undefined && ctx.remote !== null)
+          var ns = ''
+          if (hasRemote) {
+            var arr = []
+            for (var r in ctx.remote) { if (r.charAt(0) !== '$') arr.push(r) }
+            ns = arr.slice(0, 10).join('/')
+          }
+          return ' [ctx=' + keys.slice(0, 12).join(',') + ' remote=' + (hasRemote ? 'yes' : 'no') + ' ns=' + ns + ']'
+        } catch (e) { return ' [dbg失败]' }
       }
       function encodeWav(samples) {
         var bytes = new Uint8Array(44 + samples.length * 2)
@@ -1568,7 +1588,7 @@ window.__ModuleLoader__.load({
         return btn
       }
       function startVoice(btn, ta) {
-        if (speechService() === null) { voiceError('语音识别不可用：宿主语音输入插件未启用'); return }
+        if (speechService() === null) { voiceError('语音识别不可用（未取到 remote.speech）' + voiceDebugInfo()); return }
         if (!navigator.mediaDevices || typeof navigator.mediaDevices.getUserMedia !== 'function') {
           voiceError('当前环境不支持录音'); return
         }
