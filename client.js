@@ -1525,7 +1525,9 @@ window.__ModuleLoader__.load({
             for (var r in ctx.remote) { if (r.charAt(0) !== '$') arr.push(r) }
             ns = arr.slice(0, 10).join('/')
           }
-          return ' [ctx=' + keys.slice(0, 12).join(',') + ' remote=' + (hasRemote ? 'yes' : 'no') + ' ns=' + ns + ']'
+          var msg = ' [build=v1.0.18 ctx=' + keys.slice(0, 12).join(',') + ' remote=' + (hasRemote ? 'yes' : 'no') + ' ns=' + ns + ']'
+          try { window.localStorage.setItem('dsh-ann-last-voice-error', msg) } catch (_) {}
+          return msg
         } catch (e) { return ' [dbg失败]' }
       }
       function encodeWav(samples) {
