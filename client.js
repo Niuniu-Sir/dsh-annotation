@@ -100,11 +100,6 @@ window.__ModuleLoader__.load({
         '.dsh-ann-mic:hover:not(:disabled) { background: var(--dsw-alias-interactive-bg-hover); }',
         '.dsh-ann-mic.is-rec { border-color: var(--dsw-alias-state-error-primary, #e5484d); color: var(--dsw-alias-state-error-primary, #e5484d); animation: dsh-ann-pulse 1.1s ease-in-out infinite; }',
         '.dsh-ann-mic:disabled { opacity: .4; cursor: default; }',
-        '.dsh-ann-input-wrap { position: relative; flex: 1; min-width: 0; display: flex; }',
-        '.dsh-ann-input-wrap .dsh-ann-input-line { width: 100%; padding-right: 30px; }',
-        '.dsh-ann-mic-inline { position: absolute; z-index: 2; right: 4px; top: 50%; transform: translateY(-50%); width: 24px; height: 24px; border: 1px solid var(--dsw-alias-border-l2); background: var(--dsw-alias-bg-layer-2, var(--dsw-alias-bg-base)); }',
-        '.dsh-ann-mic-inline svg { width: 12px; height: 12px; }',
-        '.dsh-ann-mic-inline:hover:not(:disabled) { background: var(--dsw-alias-interactive-bg-hover); }',
         '@keyframes dsh-ann-pulse { 0%, 100% { opacity: 1; } 50% { opacity: .45; } }',
         '.dsh-ann-action svg { width: 12px; height: 12px; }',
         '.dsh-ann-icon { display: inline-flex; align-items: center; justify-content: center;',
@@ -1500,7 +1495,7 @@ window.__ModuleLoader__.load({
       }
 
       // ---------- 语音输入：复用宿主 speech Remote（与输入框麦克风同一识别服务）----------
-      var voice = { recorder: null, stream: null, chunks: [], busy: false, cancel: false }
+      var voice = { recorder: null, stream: null, chunks: [], busy: false, cancel: false, pending: false }
       function speechService() {
         // 语音 namespace 由语音输入插件挂在 cordis 服务 "remote.speech" 上
         // （api-gateway remoteServiceKey：`remote.${namespace}`）。
@@ -1529,7 +1524,7 @@ window.__ModuleLoader__.load({
             try { for (var r in remote) { if (r.charAt(0) !== '$') arr.push(r) } } catch (_) {}
             ns = arr.slice(0, 10).join('/')
           }
-          var msg = ' [build=v1.0.20 ctx=' + keys.slice(0, 12).join(',') + ' remote=' + (hasRemote ? 'yes' : 'no') + ' ns=' + ns + ']'
+          var msg = ' [build=v1.0.22 ctx=' + keys.slice(0, 12).join(',') + ' remote=' + (hasRemote ? 'yes' : 'no') + ' ns=' + ns + ']'
           try { window.localStorage.setItem('dsh-ann-last-voice-error', msg) } catch (_) {}
           return msg
         } catch (e) { return ' [dbg失败]' }
@@ -1587,7 +1582,7 @@ window.__ModuleLoader__.load({
         btn.setAttribute('aria-label', '语音输入')
         btn.appendChild(ICONS.mic())
         btn.addEventListener('click', function () {
-          if (voice.busy) return
+          if (voice.busy || voice.pending) return
           if (voice.recorder !== null) { stopVoice(); return }
           startVoice(btn, ta)
         })
@@ -1598,8 +1593,16 @@ window.__ModuleLoader__.load({
         if (!navigator.mediaDevices || typeof navigator.mediaDevices.getUserMedia !== 'function') {
           voiceError('当前环境不支持录音'); return
         }
+        if (voice.pending) return
+        voice.pending = true
         voice.cancel = false
         navigator.mediaDevices.getUserMedia({ audio: true }).then(function (stream) {
+          voice.pending = false
+          if (voice.cancel || ui.mode !== 'editing') {
+            try { stream.getTracks().forEach(function (t3) { t3.stop() }) } catch (_) {}
+            voice.cancel = false
+            return
+          }
           voice.stream = stream
           voice.chunks = []
           var rec = new MediaRecorder(stream)
@@ -1607,9 +1610,11 @@ window.__ModuleLoader__.load({
           rec.ondataavailable = function (e) { if (e.data && e.data.size > 0) voice.chunks.push(e.data) }
           rec.onstop = function () { finishVoice(btn, ta) }
           rec.start()
+          voice.pending = false
           btn.classList.add('is-rec')
           btn.title = '停止并转写'
         }).catch(function (err) {
+          voice.pending = false
           voiceError('无法打开麦克风：' + (err && err.message ? err.message : err))
         })
       }
@@ -2319,8 +2324,9 @@ window.__ModuleLoader__.load({
 
       function closeToolbar() {
         if (ui.mode === 'closed') return
-        if (voice.recorder !== null) {
+        if (voice.recorder !== null || voice.pending) {
           voice.cancel = true
+          voice.pending = false
           stopVoice()
         }
         clearSettle()
