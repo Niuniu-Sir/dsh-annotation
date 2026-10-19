@@ -1535,6 +1535,19 @@ window.__ModuleLoader__.load({
         }
         return btoa(text)
       }
+      function voiceError(msg) {
+        try { console.error('[dsh-annotation] voice:', msg) } catch (_) {}
+        // 卡片还开着时把错误写进卡片，避免 toast 一闪而过、无法复制定位
+        try {
+          if (ui.mode === 'editing') {
+            ui.error = '语音：' + msg
+            render()
+            return
+          }
+        } catch (_) {}
+        showToast('语音：' + msg)
+      }
+
       function createMicButton(ta) {
         var btn = document.createElement('button')
         btn.type = 'button'
@@ -1550,9 +1563,9 @@ window.__ModuleLoader__.load({
         return btn
       }
       function startVoice(btn, ta) {
-        if (speechService() === null) { showToast('语音识别不可用：宿主语音输入插件未启用'); return }
+        if (speechService() === null) { voiceError('语音识别不可用：宿主语音输入插件未启用'); return }
         if (!navigator.mediaDevices || typeof navigator.mediaDevices.getUserMedia !== 'function') {
-          showToast('当前环境不支持录音'); return
+          voiceError('当前环境不支持录音'); return
         }
         voice.cancel = false
         navigator.mediaDevices.getUserMedia({ audio: true }).then(function (stream) {
@@ -1566,7 +1579,7 @@ window.__ModuleLoader__.load({
           btn.classList.add('is-rec')
           btn.title = '停止并转写'
         }).catch(function (err) {
-          showToast('无法打开麦克风：' + (err && err.message ? err.message : err))
+          voiceError('无法打开麦克风：' + (err && err.message ? err.message : err))
         })
       }
       function stopVoice() {
@@ -1587,7 +1600,7 @@ window.__ModuleLoader__.load({
         btn.title = '语音输入'
         releaseTracks()
         if (voice.cancel) { voice.cancel = false; return }
-        if (rec === null || voice.chunks.length === 0) { showToast('没有录到声音'); return }
+        if (rec === null || voice.chunks.length === 0) { voiceError('没有录到声音'); return }
         transcribeVoice(btn, ta, rec)
       }
       async function transcribeVoice(btn, ta, rec) {
@@ -1607,20 +1620,20 @@ window.__ModuleLoader__.load({
           src.start()
           var rendered = await off.startRendering()
           var speech = speechService()
-          if (speech === null) { showToast('语音识别不可用'); return }
+          if (speech === null) { voiceError('语音识别不可用'); return }
           var result = await speech.transcribe({ audioBase64: audioBase64(encodeWav(rendered.getChannelData(0))) })
           if (result === null || result === undefined || result.ok !== true) {
-            showToast('转写失败：' + ((result && result.error && result.error.message) || '未知错误'))
+            voiceError('转写失败：' + JSON.stringify((result && result.error) || result || '未知错误').slice(0, 300))
             return
           }
           var text = (result.value && result.value.text) ? String(result.value.text) : ''
-          if (text === '') { showToast('没有识别到文字'); return }
+          if (text === '') { voiceError('没有识别到文字'); return }
           var sep = (ta.value !== '' && !/\s$/.test(ta.value)) ? ' ' : ''
           ta.value = ta.value + sep + text
           ui.noteDraft = ta.value
           ta.focus()
         } catch (err) {
-          showToast('转写失败：' + (err && err.message ? err.message : err))
+          voiceError('转写失败：' + (err && err.message ? err.message : String(err)))
         } finally {
           voice.busy = false
           btn.disabled = false
