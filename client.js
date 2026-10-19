@@ -95,6 +95,12 @@ window.__ModuleLoader__.load({
         '.dsh-ann-send { flex: none; width: 26px; height: 26px; padding: 0; border: none; border-radius: 50%; background: var(--dsw-alias-button-primary-fill, #111); color: var(--dsw-alias-label-primary-foreground, #fff); display: inline-flex; align-items: center; justify-content: center; cursor: pointer; }',
         '.dsh-ann-send svg { width: 13px; height: 13px; }',
         '.dsh-ann-send:hover { filter: brightness(1.15); }',
+        '.dsh-ann-mic { flex: none; width: 26px; height: 26px; padding: 0; border: 1px solid var(--dsw-alias-border-l2); border-radius: 50%; background: transparent; color: var(--dsw-alias-label-secondary); display: inline-flex; align-items: center; justify-content: center; cursor: pointer; }',
+        '.dsh-ann-mic svg { width: 13px; height: 13px; }',
+        '.dsh-ann-mic:hover:not(:disabled) { background: var(--dsw-alias-interactive-bg-hover); }',
+        '.dsh-ann-mic.is-rec { border-color: var(--dsw-alias-state-error-primary, #e5484d); color: var(--dsw-alias-state-error-primary, #e5484d); animation: dsh-ann-pulse 1.1s ease-in-out infinite; }',
+        '.dsh-ann-mic:disabled { opacity: .4; cursor: default; }',
+        '@keyframes dsh-ann-pulse { 0%, 100% { opacity: 1; } 50% { opacity: .45; } }',
         '.dsh-ann-action svg { width: 12px; height: 12px; }',
         '.dsh-ann-icon { display: inline-flex; align-items: center; justify-content: center;',
         '  width: 28px; height: 28px; padding: 0; border: none; border-radius: 28px;',
@@ -913,6 +919,13 @@ window.__ModuleLoader__.load({
           'M15.0498 3.92579L8.49512 12.3818C8.25774 12.6881 8.04517 12.9645 7.84668 13.1689C7.63957 13.3823 7.38732 13.5841 7.04492 13.6719C6.86373 13.7183 6.6757 13.7346 6.48926 13.7197C6.13666 13.6915 5.8528 13.5355 5.6123 13.3604C5.38201 13.1926 5.12573 12.9567 4.83984 12.6953L1.03125 9.21289L1.96875 8.1875L5.77734 11.6699C6.08684 11.9529 6.27773 12.1249 6.43066 12.2363C6.50183 12.2882 6.54699 12.3135 6.57324 12.3252C6.58525 12.3305 6.59269 12.3322 6.5957 12.333C6.59802 12.3336 6.59961 12.334 6.59961 12.334C6.63317 12.3367 6.66758 12.3335 6.7002 12.3252C6.7002 12.3252 6.70211 12.3251 6.7041 12.3242C6.70698 12.3229 6.71348 12.319 6.72461 12.3115C6.74849 12.2956 6.78843 12.2642 6.84961 12.2012C6.98138 12.0654 7.13957 11.8628 7.39648 11.5313L13.9502 3.07422L15.0498 3.92579Z',
         ], '0 0 16 16')
       },
+      mic: function () {
+        return svg([
+          'M8 1.5c-1.06 0-1.92.86-1.92 1.92v3.66c0 1.06.86 1.92 1.92 1.92s1.92-.86 1.92-1.92V3.42c0-1.06-.86-1.92-1.92-1.92Z',
+          'M4.2 7.2h-1a4.8 4.8 0 0 0 4.05 4.74v2.06h1.5v-2.06A4.8 4.8 0 0 0 12.8 7.2h-1a3.8 3.8 0 0 1-7.6 0Z',
+        ], '0 0 16 16')
+      },
+
       close: function () {
         return svg([
           'M14.1168 13.197L13.197 14.1167L1.8833 2.80303L2.80309 1.88324L14.1168 13.197Z',
@@ -1481,6 +1494,139 @@ window.__ModuleLoader__.load({
         return b
       }
 
+      // ---------- 语音输入：复用宿主 speech Remote（与输入框麦克风同一识别服务）----------
+      var voice = { recorder: null, stream: null, chunks: [], busy: false, cancel: false }
+      function speechService() {
+        try {
+          var remote = (ctx.remote !== undefined && ctx.remote !== null) ? ctx.remote : ctx.get('remote')
+          if (remote === null || remote === undefined) return null
+          return (remote.speech !== undefined && remote.speech !== null) ? remote.speech : null
+        } catch (_) { return null }
+      }
+      function encodeWav(samples) {
+        var bytes = new Uint8Array(44 + samples.length * 2)
+        var view = new DataView(bytes.buffer)
+        var text = function (at, value) {
+          for (var i = 0; i < value.length; i++) bytes[at + i] = value.charCodeAt(i)
+        }
+        text(0, 'RIFF')
+        view.setUint32(4, bytes.length - 8, true)
+        text(8, 'WAVE')
+        text(12, 'fmt ')
+        view.setUint32(16, 16, true)
+        view.setUint16(20, 1, true)
+        view.setUint16(22, 1, true)
+        view.setUint32(24, 16000, true)
+        view.setUint32(28, 32000, true)
+        view.setUint16(32, 2, true)
+        view.setUint16(34, 16, true)
+        text(36, 'data')
+        view.setUint32(40, samples.length * 2, true)
+        for (var i2 = 0; i2 < samples.length; i2++) {
+          var v = Math.max(-1, Math.min(1, samples[i2]))
+          view.setInt16(44 + i2 * 2, Math.round(v * (v < 0 ? 32768 : 32767)), true)
+        }
+        return bytes
+      }
+      function audioBase64(bytes) {
+        var text = ''
+        for (var i = 0; i < bytes.length; i += 8192) {
+          text += String.fromCharCode.apply(null, bytes.subarray(i, i + 8192))
+        }
+        return btoa(text)
+      }
+      function createMicButton(ta) {
+        var btn = document.createElement('button')
+        btn.type = 'button'
+        btn.className = 'dsh-ann-mic'
+        btn.title = '语音输入'
+        btn.setAttribute('aria-label', '语音输入')
+        btn.appendChild(ICONS.mic())
+        btn.addEventListener('click', function () {
+          if (voice.busy) return
+          if (voice.recorder !== null) { stopVoice(); return }
+          startVoice(btn, ta)
+        })
+        return btn
+      }
+      function startVoice(btn, ta) {
+        if (speechService() === null) { showToast('语音识别不可用：宿主语音输入插件未启用'); return }
+        if (!navigator.mediaDevices || typeof navigator.mediaDevices.getUserMedia !== 'function') {
+          showToast('当前环境不支持录音'); return
+        }
+        voice.cancel = false
+        navigator.mediaDevices.getUserMedia({ audio: true }).then(function (stream) {
+          voice.stream = stream
+          voice.chunks = []
+          var rec = new MediaRecorder(stream)
+          voice.recorder = rec
+          rec.ondataavailable = function (e) { if (e.data && e.data.size > 0) voice.chunks.push(e.data) }
+          rec.onstop = function () { finishVoice(btn, ta) }
+          rec.start()
+          btn.classList.add('is-rec')
+          btn.title = '停止并转写'
+        }).catch(function (err) {
+          showToast('无法打开麦克风：' + (err && err.message ? err.message : err))
+        })
+      }
+      function stopVoice() {
+        if (voice.recorder !== null && voice.recorder.state === 'recording') {
+          try { voice.recorder.stop() } catch (_) {}
+        }
+      }
+      function releaseTracks() {
+        if (voice.stream !== null) {
+          try { voice.stream.getTracks().forEach(function (t2) { t2.stop() }) } catch (_) {}
+        }
+        voice.stream = null
+      }
+      function finishVoice(btn, ta) {
+        var rec = voice.recorder
+        voice.recorder = null
+        btn.classList.remove('is-rec')
+        btn.title = '语音输入'
+        releaseTracks()
+        if (voice.cancel) { voice.cancel = false; return }
+        if (rec === null || voice.chunks.length === 0) { showToast('没有录到声音'); return }
+        transcribeVoice(btn, ta, rec)
+      }
+      async function transcribeVoice(btn, ta, rec) {
+        btn.disabled = true
+        voice.busy = true
+        try {
+          var blob = new Blob(voice.chunks, { type: rec.mimeType })
+          voice.chunks = []
+          var actx = new AudioContext()
+          var decoded = await actx.decodeAudioData(await blob.arrayBuffer())
+          await actx.close()
+          var frames = Math.max(1, Math.floor(Math.min(decoded.duration, 60) * 16000))
+          var off = new OfflineAudioContext(1, frames, 16000)
+          var src = off.createBufferSource()
+          src.buffer = decoded
+          src.connect(off.destination)
+          src.start()
+          var rendered = await off.startRendering()
+          var speech = speechService()
+          if (speech === null) { showToast('语音识别不可用'); return }
+          var result = await speech.transcribe({ audioBase64: audioBase64(encodeWav(rendered.getChannelData(0))) })
+          if (result === null || result === undefined || result.ok !== true) {
+            showToast('转写失败：' + ((result && result.error && result.error.message) || '未知错误'))
+            return
+          }
+          var text = (result.value && result.value.text) ? String(result.value.text) : ''
+          if (text === '') { showToast('没有识别到文字'); return }
+          var sep = (ta.value !== '' && !/\s$/.test(ta.value)) ? ' ' : ''
+          ta.value = ta.value + sep + text
+          ui.noteDraft = ta.value
+          ta.focus()
+        } catch (err) {
+          showToast('转写失败：' + (err && err.message ? err.message : err))
+        } finally {
+          voice.busy = false
+          btn.disabled = false
+        }
+      }
+
       function render() {
         host.textContent = ''
         ui.el = null
@@ -1547,6 +1693,7 @@ window.__ModuleLoader__.load({
           ta.placeholder = ui.editingId === null ? '添加批注…' : t('edit.placeholder')
           ta.value = ui.noteDraft
           ta.spellcheck = false
+          var micBtn = createMicButton(ta)
           ta.addEventListener('input', function () { ui.noteDraft = ta.value })
           ta.addEventListener('keydown', function (e) {
             if (e.key === 'Enter' && !e.shiftKey && !isImeKeyBlocked(e)) { e.preventDefault(); saveAnnotation() }
@@ -1557,6 +1704,7 @@ window.__ModuleLoader__.load({
                var line = document.createElement('div')
                line.className = 'dsh-ann-line'
                line.appendChild(ta)
+               line.appendChild(micBtn)
                var okBtn = document.createElement('button')
                okBtn.type = 'button'
                okBtn.className = 'dsh-ann-send'
@@ -1593,6 +1741,7 @@ window.__ModuleLoader__.load({
           save.appendChild(document.createTextNode(t('edit.save')))
           save.addEventListener('click', saveAnnotation)
           row.appendChild(delBtn)
+          row.appendChild(micBtn)
           row.appendChild(cancelBtn)
           row.appendChild(save)
           if (ui.editingId === null) { row.style.display = 'none' }
@@ -2115,6 +2264,10 @@ window.__ModuleLoader__.load({
 
       function closeToolbar() {
         if (ui.mode === 'closed') return
+        if (voice.recorder !== null) {
+          voice.cancel = true
+          stopVoice()
+        }
         clearSettle()
         ui.mode = 'closed'
         ui.error = null
