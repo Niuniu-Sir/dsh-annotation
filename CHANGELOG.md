@@ -3,6 +3,21 @@
 > 本仓库**从 v1.0.0 起独立编号，不跟进上游更新**。
 > 上游对应的版本见每条记录；上游自身的历史更新记录完整归档在 [`CHANGELOG.upstream.md`](./CHANGELOG.upstream.md)（未改动）。
 
+## [1.0.9] — 2026-10-19
+
+上游对应仍为 **v1.4.11**（提交 `14111b2`）。
+
+### 改动（只动 `client.js` 的样式字符串与两处内联样式）
+
+- **深色模式适配：把写死的颜色换成宿主主题变量**，跟随浅色/深色自动切换：
+  - 工具条外边框：`var(--maid-navy-800, #1c326b)` → `var(--maid-navy-800, var(--dsw-alias-border-inverted, #1c326b))`（有女仆皮肤变量时仍用深蓝，否则跟随主题边框）；
+  - 新增框发送键：`#111 / #fff` → `var(--dsw-alias-button-primary-fill)` / `var(--dsw-alias-label-primary-foreground)`（深色下不再是纯黑圆点）；
+  - 删除/错误红：`#e5484d`、`#ff8a8a`、`rgba(255,107,107,.4)` → `var(--dsw-alias-state-error-primary, …)`；
+  - 编号角标与引用序号的白字：`#fff` → `var(--dsw-alias-label-primary-foreground, #fff)`。
+- 其余底色、文字、边框、阴影原本就走 `--dsw-alias-*`，未改动。
+
+**未改动**：布局、字号/字族、定位逻辑、协议块、语言体系；主题变量缺失时全部保留原值兜底。
+
 ## [1.0.8] — 2026-10-19
 
 上游对应仍为 **v1.4.11**（提交 `14111b2`）。

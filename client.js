@@ -64,7 +64,7 @@ window.__ModuleLoader__.load({
         '[data-annotation-for-dsh] * { box-sizing: border-box; }',
         '.dsh-ann-bar { position: fixed; z-index: 1200; display: flex; align-items: center;',
         '  gap: 0; padding: 1px; border-radius: 10px;',
-        '  border: 1px solid var(--maid-navy-800, #1c326b);',
+        '  border: 1px solid var(--maid-navy-800, var(--dsw-alias-border-inverted, #1c326b));',
         '  background: var(--dsw-alias-bg-layer-2, var(--dsw-alias-bg-base, #2c2c2e));',
         '  box-shadow: var(--dsw-shadow-lv3);',
         '  font-family: var(--dsw-font-family, system-ui);',
@@ -86,13 +86,13 @@ window.__ModuleLoader__.load({
         '  font-family: inherit; font-size: 12px; line-height: 18px; cursor: pointer; }',
         '.dsh-ann-action:hover:not(:disabled) { background: var(--dsw-alias-button-primary-hover); }',
         '.dsh-ann-action:disabled { opacity: .4; cursor: default; }',
-        '.dsh-ann-danger { background: transparent; color: #e5484d; border: 1px solid var(--dsw-alias-border-inverted); margin-right: auto; }',
+        '.dsh-ann-danger { background: transparent; color: var(--dsw-alias-state-error-primary, #e5484d); border: 1px solid var(--dsw-alias-border-inverted); margin-right: auto; }',
         '.dsh-ann-danger:hover:not(:disabled) { background: var(--dsw-alias-interactive-bg-hover); }',
         '.dsh-ann-plain { background: transparent; color: var(--dsw-alias-label-primary); border: 1px solid var(--dsw-alias-border-inverted); }',
         '.dsh-ann-plain:hover:not(:disabled) { background: var(--dsw-alias-interactive-bg-hover); }',
         '.dsh-ann-line { display: flex; align-items: center; gap: 6px; }',
         '.dsh-ann-input-line { min-height: 26px; height: 26px; padding: 4px 9px; resize: none; overflow: hidden; }',
-        '.dsh-ann-send { flex: none; width: 26px; height: 26px; padding: 0; border: none; border-radius: 50%; background: #111; color: #fff; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; }',
+        '.dsh-ann-send { flex: none; width: 26px; height: 26px; padding: 0; border: none; border-radius: 50%; background: var(--dsw-alias-button-primary-fill, #111); color: var(--dsw-alias-label-primary-foreground, #fff); display: inline-flex; align-items: center; justify-content: center; cursor: pointer; }',
         '.dsh-ann-send svg { width: 13px; height: 13px; }',
         '.dsh-ann-send:hover { filter: brightness(1.15); }',
         '.dsh-ann-action svg { width: 12px; height: 12px; }',
@@ -127,7 +127,7 @@ window.__ModuleLoader__.load({
         '  border-radius: 8px; background: var(--dsw-alias-bg-layer-1); }',
         '.dsh-ann-qnum { flex: none; display: inline-flex; align-items: center; justify-content: center;',
         '  width: 16px; height: 16px; margin-top: 1px; border-radius: 8px;',
-        '  background: var(--dsw-alias-text-accent, #4c9aff); color: #fff;',
+        '  background: var(--dsw-alias-text-accent, #4c9aff); color: var(--dsw-alias-label-primary-foreground, #fff);',
         '  font-size: 10px; font-weight: 700; }',
         '.dsh-ann-qbody { flex: 1; min-width: 0; }',
         '.dsh-ann-qtext { font-size: 12px; line-height: 1.5;',
@@ -159,7 +159,7 @@ window.__ModuleLoader__.load({
         '.dsh-ann-num { position: fixed; z-index: 940; display: inline-flex; align-items: center;',
         '  justify-content: center; min-width: 16px; height: 16px; padding: 0 4px;',
         '  border-radius: 8px; border: 1px solid rgba(255, 255, 255, .3);',
-        '  background: var(--dsw-alias-text-accent, #4c9aff); color: #fff;',
+        '  background: var(--dsw-alias-text-accent, #4c9aff); color: var(--dsw-alias-label-primary-foreground, #fff);',
         '  font-family: var(--dsw-font-family, system-ui); font-size: 10px; font-weight: 700;',
         '  box-shadow: 0 1px 4px rgba(0,0,0,.35); pointer-events: auto; cursor: pointer;',
         '  transition: filter .12s ease; }',
@@ -2310,7 +2310,7 @@ window.__ModuleLoader__.load({
           var item = document.createElement('div')
           item.style.cssText = 'padding:6px 0;border-top:1px solid var(--dsw-alias-border-strong,#444);'
           var num = document.createElement('span')
-          num.style.cssText = 'display:inline-flex;align-items:center;justify-content:center;min-width:16px;height:16px;margin-right:6px;border-radius:8px;background:var(--dsw-alias-text-accent,#4c9aff);color:#fff;font-size:10px;font-weight:700;'
+          num.style.cssText = 'display:inline-flex;align-items:center;justify-content:center;min-width:16px;height:16px;margin-right:6px;border-radius:8px;background:var(--dsw-alias-text-accent,#4c9aff);color:var(--dsw-alias-label-primary-foreground,#fff);font-size:10px;font-weight:700;'
           num.textContent = String(i + 1)
           var body = document.createElement('span')
           body.style.cssText = 'font-size:11px;line-height:1.5;color:var(--dsw-alias-label-tertiary);'
@@ -2326,7 +2326,7 @@ window.__ModuleLoader__.load({
           var del = document.createElement('button')
           del.type = 'button'
           del.textContent = t('tip.del')
-          del.style.cssText = 'margin-left:8px;background:transparent;border:1px solid rgba(255,107,107,.4);color:#ff8a8a;border-radius:6px;font-size:10px;cursor:pointer;padding:1px 6px;'
+          del.style.cssText = 'margin-left:8px;background:transparent;border:1px solid var(--dsw-alias-state-error-primary, rgba(255,107,107,.4));color:var(--dsw-alias-state-error-primary, #ff8a8a);border-radius:6px;font-size:10px;cursor:pointer;padding:1px 6px;'
           ;(function (qid) {
             del.addEventListener('click', function (ev) {
               ev.stopPropagation()
@@ -2545,7 +2545,7 @@ window.__ModuleLoader__.load({
               var item = document.createElement('div')
               item.style.cssText = 'padding:6px 0;border-top:1px solid var(--dsw-alias-border-strong,#444);'
               var num = document.createElement('span')
-              num.style.cssText = 'display:inline-flex;align-items:center;justify-content:center;min-width:16px;height:16px;margin-right:6px;border-radius:8px;background:var(--dsw-alias-text-accent,#4c9aff);color:#fff;font-size:10px;font-weight:700;'
+              num.style.cssText = 'display:inline-flex;align-items:center;justify-content:center;min-width:16px;height:16px;margin-right:6px;border-radius:8px;background:var(--dsw-alias-text-accent,#4c9aff);color:var(--dsw-alias-label-primary-foreground,#fff);font-size:10px;font-weight:700;'
               num.textContent = String(i + 1)
               var body = document.createElement('span')
               body.style.cssText = 'font-size:11px;line-height:1.5;color:var(--dsw-alias-label-tertiary);'
