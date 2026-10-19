@@ -870,21 +870,22 @@ window.__ModuleLoader__.load({
       return s.length > n ? s.slice(0, n) + '…' : s
     }
 
-    function placeAbove(rect, height, wOpt) {
+    function placeAbove(rect, height, wOpt, gapOpt) {
+      var gap = (typeof gapOpt === 'number') ? gapOpt : 8
       var w = (typeof wOpt === 'number') ? wOpt : 400
       var left = w > 0 ? rect.left + rect.width / 2 - w / 2 : rect.left
       left = Math.max(8, Math.min(left, window.innerWidth - w - 8))
       // 下方优先：原生选中菜单（移动端长按菜单、桌面 Copy/Search 浮层）锚定在选区
       // 上沿附近，且原生 UI 恒绘制在页面内容之上（z-index 无效），工具条放上方必被
       // 遮挡；因此下方放得下就放下方，放不下才回上方。
-      var belowTop = rect.bottom + 8
+      var belowTop = rect.bottom + gap
       var belowFits = false
       var top
       if (belowFits) {
         top = belowTop
       } else {
-        top = rect.top - height - 8
-        if (top < 8) top = Math.min(rect.bottom + 8, window.innerHeight - height - 8)
+        top = rect.top - height - gap
+        if (top < 8) top = Math.min(rect.bottom + gap, window.innerHeight - height - 8)
       }
       return { left: Math.round(left), top: Math.round(Math.max(8, top)) }
     }
@@ -1234,7 +1235,7 @@ window.__ModuleLoader__.load({
             || (source !== null && settleSessionId !== undefined && source.sessionId !== settleSessionId)) return
           var rect = r.getBoundingClientRect()
           if (rect.width === 0 || rect.height === 0) return
-          var p = placeAbove(rect, 40, 0)
+          var p = placeAbove(rect, (ui.el !== null && ui.el.offsetHeight) ? ui.el.offsetHeight : 30, 0, 4)
           if (ui.mode === 'actions' && ui.quote === text && (ui.source && ui.source.sourceUrl) === (source && source.sourceUrl)) {
             ui.lastKey = key
             ui.pos = p; ui.rect = rect
@@ -1308,7 +1309,7 @@ window.__ModuleLoader__.load({
             return
           }
           lostSince = 0
-          var p = placeAbove(rect, 40, 0)
+          var p = placeAbove(rect, (ui.el !== null && ui.el.offsetHeight) ? ui.el.offsetHeight : 30, 0, 4)
           if (Math.abs(p.left - ui.pos.left) + Math.abs(p.top - ui.pos.top) > 2) {
             ui.pos = p; ui.rect = rect
             if (ui.el !== null && ui.el.style) {
@@ -1497,6 +1498,14 @@ window.__ModuleLoader__.load({
           ))
           host.appendChild(bar)
           ui.el = bar
+          // 按实测高度重新定位：工具条底边贴选区上沿，仅留 4px
+          if (ui.rect !== null && ui.rect !== undefined) {
+            var barH = bar.offsetHeight || 30
+            var tightTop = Math.round(ui.rect.top - barH - 4)
+            if (tightTop < 8) tightTop = Math.round(ui.rect.bottom + 4)
+            bar.style.top = tightTop + 'px'
+            ui.pos.top = tightTop
+          }
         } else if (ui.mode === 'editing') {
           var card = document.createElement('div')
           card.className = 'dsh-ann-card'

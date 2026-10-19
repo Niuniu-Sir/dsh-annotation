@@ -1,7 +1,7 @@
-﻿diff --git "E:\\DSH_data\\_annot-src\\x\\omdsh-dev-dsh-annotation-14111b2\\client.js" "E:\\DSH_data\\dsh-annotation-fork-clone\\client.js"
-index c8e0c23..45a3d95 100644
---- "E:\\DSH_data\\_annot-src\\x\\omdsh-dev-dsh-annotation-14111b2\\client.js"
-+++ "E:\\DSH_data\\dsh-annotation-fork-clone\\client.js"
+diff --git a/client.js b/client.js
+index c8e0c23..2085b51 100644
+--- a/client.js
++++ b/client.js
 @@ -63,8 +63,8 @@ window.__ModuleLoader__.load({
          '[data-annotation-for-dsh] { all: initial; }',
          '[data-annotation-for-dsh] * { box-sizing: border-box; }',
@@ -100,32 +100,42 @@ index c8e0c23..45a3d95 100644
          },
          edit: {
            addTitle: '添加批注',
-@@ -861,15 +870,15 @@ window.__ModuleLoader__.load({
+@@ -861,21 +870,22 @@ window.__ModuleLoader__.load({
        return s.length > n ? s.slice(0, n) + '…' : s
      }
  
 -    function placeAbove(rect, height) {
 -      var w = 400
 -      var left = rect.left + rect.width / 2 - w / 2
-+    function placeAbove(rect, height, wOpt) {
++    function placeAbove(rect, height, wOpt, gapOpt) {
++      var gap = (typeof gapOpt === 'number') ? gapOpt : 8
 +      var w = (typeof wOpt === 'number') ? wOpt : 400
 +      var left = w > 0 ? rect.left + rect.width / 2 - w / 2 : rect.left
        left = Math.max(8, Math.min(left, window.innerWidth - w - 8))
        // 下方优先：原生选中菜单（移动端长按菜单、桌面 Copy/Search 浮层）锚定在选区
        // 上沿附近，且原生 UI 恒绘制在页面内容之上（z-index 无效），工具条放上方必被
        // 遮挡；因此下方放得下就放下方，放不下才回上方。
-       var belowTop = rect.bottom + 8
+-      var belowTop = rect.bottom + 8
 -      var belowFits = belowTop + height <= window.innerHeight - 8
++      var belowTop = rect.bottom + gap
 +      var belowFits = false
        var top
        if (belowFits) {
          top = belowTop
-@@ -1225,10 +1234,10 @@ window.__ModuleLoader__.load({
+       } else {
+-        top = rect.top - height - 8
+-        if (top < 8) top = Math.min(rect.bottom + 8, window.innerHeight - height - 8)
++        top = rect.top - height - gap
++        if (top < 8) top = Math.min(rect.bottom + gap, window.innerHeight - height - 8)
+       }
+       return { left: Math.round(left), top: Math.round(Math.max(8, top)) }
+     }
+@@ -1225,10 +1235,10 @@ window.__ModuleLoader__.load({
              || (source !== null && settleSessionId !== undefined && source.sessionId !== settleSessionId)) return
            var rect = r.getBoundingClientRect()
            if (rect.width === 0 || rect.height === 0) return
 -          var p = placeAbove(rect, 40)
-+          var p = placeAbove(rect, 40, 0)
++          var p = placeAbove(rect, (ui.el !== null && ui.el.offsetHeight) ? ui.el.offsetHeight : 30, 0, 4)
            if (ui.mode === 'actions' && ui.quote === text && (ui.source && ui.source.sourceUrl) === (source && source.sourceUrl)) {
              ui.lastKey = key
 -            ui.pos = p
@@ -133,7 +143,7 @@ index c8e0c23..45a3d95 100644
              if (ui.el !== null && ui.el.style) {
                ui.el.style.left = p.left + 'px'
                ui.el.style.top = p.top + 'px'
-@@ -1241,7 +1250,7 @@ window.__ModuleLoader__.load({
+@@ -1241,7 +1251,7 @@ window.__ModuleLoader__.load({
            ui.source = source
            ui.selectionRoot = rootEl
            ui.error = null
@@ -142,7 +152,7 @@ index c8e0c23..45a3d95 100644
            render()
          }, 250)
        }
-@@ -1255,11 +1264,17 @@ window.__ModuleLoader__.load({
+@@ -1255,11 +1265,17 @@ window.__ModuleLoader__.load({
        host.addEventListener('pointerdown', onHostPointerDown)
  
        function onDocPointerDown(e) {
@@ -164,7 +174,7 @@ index c8e0c23..45a3d95 100644
  
        var anchorRaf = false
        var lostSince = 0
-@@ -1271,7 +1286,7 @@ window.__ModuleLoader__.load({
+@@ -1271,7 +1287,7 @@ window.__ModuleLoader__.load({
            anchorRaf = false
            if (ui.quotes.length > 0) renderMarkers()
            updateChip()
@@ -173,19 +183,19 @@ index c8e0c23..45a3d95 100644
            if (ui.mode !== 'actions' || ui.quote === '') return
            var rect = null
            var sel = window.getSelection()
-@@ -1293,9 +1308,9 @@ window.__ModuleLoader__.load({
+@@ -1293,9 +1309,9 @@ window.__ModuleLoader__.load({
              return
            }
            lostSince = 0
 -          var p = placeAbove(rect, 40)
-+          var p = placeAbove(rect, 40, 0)
++          var p = placeAbove(rect, (ui.el !== null && ui.el.offsetHeight) ? ui.el.offsetHeight : 30, 0, 4)
            if (Math.abs(p.left - ui.pos.left) + Math.abs(p.top - ui.pos.top) > 2) {
 -            ui.pos = p
 +            ui.pos = p; ui.rect = rect
              if (ui.el !== null && ui.el.style) {
                ui.el.style.left = p.left + 'px'
                ui.el.style.top = p.top + 'px'
-@@ -1474,7 +1489,7 @@ window.__ModuleLoader__.load({
+@@ -1474,7 +1490,7 @@ window.__ModuleLoader__.load({
            bar.style.top = ui.pos.top + 'px'
            var already = ui.quotes.some(function (q) { return q.text === ui.quote && (q.sourceUrl || '') === (ui.source && ui.source.sourceUrl || '') })
            bar.appendChild(ghostButton(
@@ -194,7 +204,22 @@ index c8e0c23..45a3d95 100644
              already ? t('actions.already') : t('actions.annotate'),
              already ? t('actions.alreadyTitle') : t('actions.annotateTitle'),
              already,
-@@ -1490,12 +1505,12 @@ window.__ModuleLoader__.load({
+@@ -1482,6 +1498,14 @@ window.__ModuleLoader__.load({
+           ))
+           host.appendChild(bar)
+           ui.el = bar
++          // 按实测高度重新定位：工具条底边贴选区上沿，仅留 4px
++          if (ui.rect !== null && ui.rect !== undefined) {
++            var barH = bar.offsetHeight || 30
++            var tightTop = Math.round(ui.rect.top - barH - 4)
++            if (tightTop < 8) tightTop = Math.round(ui.rect.bottom + 4)
++            bar.style.top = tightTop + 'px'
++            ui.pos.top = tightTop
++          }
+         } else if (ui.mode === 'editing') {
+           var card = document.createElement('div')
+           card.className = 'dsh-ann-card'
+@@ -1490,12 +1514,12 @@ window.__ModuleLoader__.load({
            ui.el = card
            var head = document.createElement('div')
            head.className = 'dsh-ann-card-head'
@@ -209,7 +234,7 @@ index c8e0c23..45a3d95 100644
            headMain.appendChild(title)
            // 编辑已有批注时，标题右侧紧邻一个删除按钮（新增批注没有可删对象）。
            if (ui.editingId !== null) {
-@@ -1513,33 +1528,68 @@ window.__ModuleLoader__.load({
+@@ -1513,33 +1537,68 @@ window.__ModuleLoader__.load({
              headMain.appendChild(del)
            }
            head.appendChild(headMain)
@@ -285,7 +310,7 @@ index c8e0c23..45a3d95 100644
            if (ui.error !== null) {
              var err = document.createElement('div')
              err.className = 'dsh-ann-error'
-@@ -1556,10 +1606,17 @@ window.__ModuleLoader__.load({
+@@ -1556,10 +1615,17 @@ window.__ModuleLoader__.load({
        }
  
        function positionEditor(card, left, top) {
@@ -307,7 +332,7 @@ index c8e0c23..45a3d95 100644
          card.style.left = ui.pos.left + 'px'
          card.style.top = ui.pos.top + 'px'
        }
-@@ -1880,8 +1937,9 @@ window.__ModuleLoader__.load({
+@@ -1880,8 +1946,9 @@ window.__ModuleLoader__.load({
          ui.pendingAnchor = null
          var range = locateQuote(q.text, q)
          var rect = range !== null ? range.getBoundingClientRect() : null
