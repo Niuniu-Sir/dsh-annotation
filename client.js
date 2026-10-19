@@ -1502,17 +1502,19 @@ window.__ModuleLoader__.load({
       // ---------- 语音输入：复用宿主 speech Remote（与输入框麦克风同一识别服务）----------
       var voice = { recorder: null, stream: null, chunks: [], busy: false, cancel: false }
       function speechService() {
+        // 语音 namespace 由语音输入插件挂在 cordis 服务 "remote.speech" 上
+        // （api-gateway remoteServiceKey：`remote.${namespace}`）。
         try {
-          var remote = (ctx.remote !== undefined && ctx.remote !== null) ? ctx.remote : null
-          if (remote === null && typeof ctx.get === 'function') {
-            var names = ['remote', 'apiRemotes', 'typertRemote', 'gateway']
-            for (var i = 0; i < names.length; i++) {
-              try { var cand = ctx.get(names[i]); if (cand) { remote = cand; break } } catch (_) {}
-            }
+          if (typeof ctx.get === 'function') {
+            var svc = ctx.get('remote.speech')
+            if (svc !== undefined && svc !== null) return svc
           }
-          if (remote === null || remote === undefined) return null
-          return (remote.speech !== undefined && remote.speech !== null) ? remote.speech : null
-        } catch (_) { return null }
+        } catch (_) {}
+        try {
+          if (ctx.remote !== undefined && ctx.remote !== null
+            && ctx.remote.speech !== undefined && ctx.remote.speech !== null) return ctx.remote.speech
+        } catch (_) {}
+        return null
       }
       function voiceDebugInfo() {
         try {
@@ -1527,7 +1529,7 @@ window.__ModuleLoader__.load({
             try { for (var r in remote) { if (r.charAt(0) !== '$') arr.push(r) } } catch (_) {}
             ns = arr.slice(0, 10).join('/')
           }
-          var msg = ' [build=v1.0.18 ctx=' + keys.slice(0, 12).join(',') + ' remote=' + (hasRemote ? 'yes' : 'no') + ' ns=' + ns + ']'
+          var msg = ' [build=v1.0.20 ctx=' + keys.slice(0, 12).join(',') + ' remote=' + (hasRemote ? 'yes' : 'no') + ' ns=' + ns + ']'
           try { window.localStorage.setItem('dsh-ann-last-voice-error', msg) } catch (_) {}
           return msg
         } catch (e) { return ' [dbg失败]' }
@@ -1745,12 +1747,19 @@ window.__ModuleLoader__.load({
                ta.className = 'dsh-ann-input dsh-ann-input-line'
                var line = document.createElement('div')
                line.className = 'dsh-ann-line'
-               var inputWrap = document.createElement('div')
-               inputWrap.className = 'dsh-ann-input-wrap'
-               micBtn.classList.add('dsh-ann-mic-inline')
-               inputWrap.appendChild(ta)
-               inputWrap.appendChild(micBtn)
-               line.appendChild(inputWrap)
+               micBtn.style.position = 'static'
+               micBtn.style.transform = 'none'
+               micBtn.style.flex = 'none'
+               micBtn.style.width = '24px'
+               micBtn.style.height = '24px'
+               micBtn.style.border = '1px solid var(--dsw-alias-border-l2, rgba(255,255,255,.2))'
+               micBtn.style.background = 'var(--dsw-alias-bg-layer-2, var(--dsw-alias-bg-base))'
+               micBtn.style.color = 'var(--dsw-alias-label-secondary)'
+               ta.style.flex = '1'
+               ta.style.width = 'auto'
+               ta.style.minWidth = '0'
+               line.appendChild(ta)
+               line.appendChild(micBtn)
                var okBtn = document.createElement('button')
                okBtn.type = 'button'
                okBtn.className = 'dsh-ann-send'
@@ -3126,7 +3135,7 @@ window.__ModuleLoader__.load({
     }
 
     exports.name = '@changfenhuang/dsh-annotation'
-    exports.inject = ['sessions', 'conversation', 'locale', 'uiSession', 'remote']
+    exports.inject = ['sessions', 'conversation', 'locale', 'uiSession', 'remote', 'remote.speech']
     exports.apply = apply
 
     return module.exports

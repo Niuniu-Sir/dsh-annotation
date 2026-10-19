@@ -3,6 +3,17 @@
 > 本仓库**从 v1.0.0 起独立编号，不跟进上游更新**。
 > 上游对应的版本见每条记录；上游自身的历史更新记录完整归档在 [`CHANGELOG.upstream.md`](./CHANGELOG.upstream.md)（未改动）。
 
+## [1.0.20] — 2026-10-19
+
+上游对应仍为 **v1.4.11**（提交 `14111b2`）。
+
+### 修复：语音服务名 + 新增卡话筒可见性
+
+- **语音服务名纠正**：语音 namespace 在 cordis 里注册为 **`remote.speech`**（`api-gateway` 的 `remoteServiceKey(namespace)` = `remote.<namespace>`；语音插件自身也是 `ctx.inject(["remote.speech", …])`）。此前插件只注入 `remote`，`ctx.remote.speech` 因此为空。现在 `exports.inject` 增加 `'remote.speech'`，`speechService()` 优先 `ctx.get('remote.speech')`。
+- **新增批注卡话筒**改为普通 flex 子元素（输入框 + 话筒 + ✓ 三件并排），并用内联样式固定尺寸/边框/底色，不再依赖绝对定位与附加 CSS，避免“看不见”。
+
+**未改动**：录音/转写流程、编辑卡布局。
+
 ## [1.0.19] — 2026-10-19
 
 上游对应仍为 **v1.4.11**（提交 `14111b2`）。

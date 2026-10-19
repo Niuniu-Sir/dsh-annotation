@@ -1,5 +1,5 @@
 diff --git a/client.js b/client.js
-index c8e0c23..b4291f7 100644
+index c8e0c23..7099368 100644
 --- a/client.js
 +++ b/client.js
 @@ -60,65 +60,86 @@ window.__ModuleLoader__.load({
@@ -271,24 +271,26 @@ index c8e0c23..b4291f7 100644
              if (ui.el !== null && ui.el.style) {
                ui.el.style.left = p.left + 'px'
                ui.el.style.top = p.top + 'px'
-@@ -1464,6 +1499,176 @@ window.__ModuleLoader__.load({
+@@ -1464,6 +1499,178 @@ window.__ModuleLoader__.load({
          return b
        }
  
 +      // ---------- 语音输入：复用宿主 speech Remote（与输入框麦克风同一识别服务）----------
 +      var voice = { recorder: null, stream: null, chunks: [], busy: false, cancel: false }
 +      function speechService() {
++        // 语音 namespace 由语音输入插件挂在 cordis 服务 "remote.speech" 上
++        // （api-gateway remoteServiceKey：`remote.${namespace}`）。
 +        try {
-+          var remote = (ctx.remote !== undefined && ctx.remote !== null) ? ctx.remote : null
-+          if (remote === null && typeof ctx.get === 'function') {
-+            var names = ['remote', 'apiRemotes', 'typertRemote', 'gateway']
-+            for (var i = 0; i < names.length; i++) {
-+              try { var cand = ctx.get(names[i]); if (cand) { remote = cand; break } } catch (_) {}
-+            }
++          if (typeof ctx.get === 'function') {
++            var svc = ctx.get('remote.speech')
++            if (svc !== undefined && svc !== null) return svc
 +          }
-+          if (remote === null || remote === undefined) return null
-+          return (remote.speech !== undefined && remote.speech !== null) ? remote.speech : null
-+        } catch (_) { return null }
++        } catch (_) {}
++        try {
++          if (ctx.remote !== undefined && ctx.remote !== null
++            && ctx.remote.speech !== undefined && ctx.remote.speech !== null) return ctx.remote.speech
++        } catch (_) {}
++        return null
 +      }
 +      function voiceDebugInfo() {
 +        try {
@@ -303,7 +305,7 @@ index c8e0c23..b4291f7 100644
 +            try { for (var r in remote) { if (r.charAt(0) !== '$') arr.push(r) } } catch (_) {}
 +            ns = arr.slice(0, 10).join('/')
 +          }
-+          var msg = ' [build=v1.0.18 ctx=' + keys.slice(0, 12).join(',') + ' remote=' + (hasRemote ? 'yes' : 'no') + ' ns=' + ns + ']'
++          var msg = ' [build=v1.0.20 ctx=' + keys.slice(0, 12).join(',') + ' remote=' + (hasRemote ? 'yes' : 'no') + ' ns=' + ns + ']'
 +          try { window.localStorage.setItem('dsh-ann-last-voice-error', msg) } catch (_) {}
 +          return msg
 +        } catch (e) { return ' [dbg失败]' }
@@ -448,7 +450,7 @@ index c8e0c23..b4291f7 100644
        function render() {
          host.textContent = ''
          ui.el = null
-@@ -1474,7 +1679,7 @@ window.__ModuleLoader__.load({
+@@ -1474,7 +1681,7 @@ window.__ModuleLoader__.load({
            bar.style.top = ui.pos.top + 'px'
            var already = ui.quotes.some(function (q) { return q.text === ui.quote && (q.sourceUrl || '') === (ui.source && ui.source.sourceUrl || '') })
            bar.appendChild(ghostButton(
@@ -457,7 +459,7 @@ index c8e0c23..b4291f7 100644
              already ? t('actions.already') : t('actions.annotate'),
              already ? t('actions.alreadyTitle') : t('actions.annotateTitle'),
              already,
-@@ -1482,6 +1687,14 @@ window.__ModuleLoader__.load({
+@@ -1482,6 +1689,14 @@ window.__ModuleLoader__.load({
            ))
            host.appendChild(bar)
            ui.el = bar
@@ -472,7 +474,7 @@ index c8e0c23..b4291f7 100644
          } else if (ui.mode === 'editing') {
            var card = document.createElement('div')
            card.className = 'dsh-ann-card'
-@@ -1490,12 +1703,12 @@ window.__ModuleLoader__.load({
+@@ -1490,12 +1705,12 @@ window.__ModuleLoader__.load({
            ui.el = card
            var head = document.createElement('div')
            head.className = 'dsh-ann-card-head'
@@ -487,7 +489,7 @@ index c8e0c23..b4291f7 100644
            headMain.appendChild(title)
            // 编辑已有批注时，标题右侧紧邻一个删除按钮（新增批注没有可删对象）。
            if (ui.editingId !== null) {
-@@ -1513,33 +1726,72 @@ window.__ModuleLoader__.load({
+@@ -1513,33 +1728,79 @@ window.__ModuleLoader__.load({
              headMain.appendChild(del)
            }
            head.appendChild(headMain)
@@ -519,12 +521,19 @@ index c8e0c23..b4291f7 100644
 +               ta.className = 'dsh-ann-input dsh-ann-input-line'
 +               var line = document.createElement('div')
 +               line.className = 'dsh-ann-line'
-+               var inputWrap = document.createElement('div')
-+               inputWrap.className = 'dsh-ann-input-wrap'
-+               micBtn.classList.add('dsh-ann-mic-inline')
-+               inputWrap.appendChild(ta)
-+               inputWrap.appendChild(micBtn)
-+               line.appendChild(inputWrap)
++               micBtn.style.position = 'static'
++               micBtn.style.transform = 'none'
++               micBtn.style.flex = 'none'
++               micBtn.style.width = '24px'
++               micBtn.style.height = '24px'
++               micBtn.style.border = '1px solid var(--dsw-alias-border-l2, rgba(255,255,255,.2))'
++               micBtn.style.background = 'var(--dsw-alias-bg-layer-2, var(--dsw-alias-bg-base))'
++               micBtn.style.color = 'var(--dsw-alias-label-secondary)'
++               ta.style.flex = '1'
++               ta.style.width = 'auto'
++               ta.style.minWidth = '0'
++               line.appendChild(ta)
++               line.appendChild(micBtn)
 +               var okBtn = document.createElement('button')
 +               okBtn.type = 'button'
 +               okBtn.className = 'dsh-ann-send'
@@ -570,7 +579,7 @@ index c8e0c23..b4291f7 100644
            if (ui.error !== null) {
              var err = document.createElement('div')
              err.className = 'dsh-ann-error'
-@@ -1556,10 +1808,17 @@ window.__ModuleLoader__.load({
+@@ -1556,10 +1817,17 @@ window.__ModuleLoader__.load({
        }
  
        function positionEditor(card, left, top) {
@@ -592,7 +601,7 @@ index c8e0c23..b4291f7 100644
          card.style.left = ui.pos.left + 'px'
          card.style.top = ui.pos.top + 'px'
        }
-@@ -1739,8 +1998,8 @@ window.__ModuleLoader__.load({
+@@ -1739,8 +2007,8 @@ window.__ModuleLoader__.load({
            }
            if (anchor === null && rects.length > 0 && rects[0].width > 0) anchor = rects[0]
            if (anchor !== null) {
@@ -603,7 +612,7 @@ index c8e0c23..b4291f7 100644
              if (chipTop < 4) chipTop = 4
              // #63：编号下限抬到会话列可视区上沿 + 4px——原文起于其下时，把落在
              // 顶栏横带里的编号压回正文区（而不是被裁成半截或整条跳过）；原文
-@@ -1749,7 +2008,7 @@ window.__ModuleLoader__.load({
+@@ -1749,7 +2017,7 @@ window.__ModuleLoader__.load({
              var col = conversationColumnRange()
              var chipFloor = col !== null ? col.top + 4 : 4
              if (col !== null && anchor.top >= chipFloor && chipTop < chipFloor) chipTop = chipFloor
@@ -612,7 +621,7 @@ index c8e0c23..b4291f7 100644
              // 编号只允许出现在「会话正文实际看得见」的地方：跟正文一样，滚出
              // 内容可视区就消失，绝不贴边钉住（钉住会浮在输入框上/下面的空处）。
              // 两条判据：① 落在正文滚动容器里；② 不与宿主遮挡 UI（会话头部、
-@@ -1759,15 +2018,15 @@ window.__ModuleLoader__.load({
+@@ -1759,15 +2027,15 @@ window.__ModuleLoader__.load({
              var views = hostLocalRects('scrollBody')
              for (var vc = 0; vc < views.length; vc++) {
                var vr = views[vc]
@@ -632,7 +641,7 @@ index c8e0c23..b4291f7 100644
              }
              if (!skipChip) {
                var chip = document.createElement('div')
-@@ -1778,14 +2037,14 @@ window.__ModuleLoader__.load({
+@@ -1778,14 +2046,14 @@ window.__ModuleLoader__.load({
                  var clash = false
                  for (var p = 0; p < placed.length; p++) {
                    var bp = placed[p]
@@ -650,7 +659,7 @@ index c8e0c23..b4291f7 100644
                  tries++
                }
                placed.push({ left: chipLeft, top: chipTop })
-@@ -1880,8 +2139,9 @@ window.__ModuleLoader__.load({
+@@ -1880,8 +2148,9 @@ window.__ModuleLoader__.load({
          ui.pendingAnchor = null
          var range = locateQuote(q.text, q)
          var rect = range !== null ? range.getBoundingClientRect() : null
@@ -662,7 +671,7 @@ index c8e0c23..b4291f7 100644
            : { left: 8, top: 8 }
          render()
        }
-@@ -2050,6 +2310,10 @@ window.__ModuleLoader__.load({
+@@ -2050,6 +2319,10 @@ window.__ModuleLoader__.load({
  
        function closeToolbar() {
          if (ui.mode === 'closed') return
@@ -673,7 +682,7 @@ index c8e0c23..b4291f7 100644
          clearSettle()
          ui.mode = 'closed'
          ui.error = null
-@@ -2243,7 +2507,7 @@ window.__ModuleLoader__.load({
+@@ -2243,7 +2516,7 @@ window.__ModuleLoader__.load({
            var item = document.createElement('div')
            item.style.cssText = 'padding:6px 0;border-top:1px solid var(--dsw-alias-border-strong,#444);'
            var num = document.createElement('span')
@@ -682,7 +691,7 @@ index c8e0c23..b4291f7 100644
            num.textContent = String(i + 1)
            var body = document.createElement('span')
            body.style.cssText = 'font-size:11px;line-height:1.5;color:var(--dsw-alias-label-tertiary);'
-@@ -2259,7 +2523,7 @@ window.__ModuleLoader__.load({
+@@ -2259,7 +2532,7 @@ window.__ModuleLoader__.load({
            var del = document.createElement('button')
            del.type = 'button'
            del.textContent = t('tip.del')
@@ -691,7 +700,7 @@ index c8e0c23..b4291f7 100644
            ;(function (qid) {
              del.addEventListener('click', function (ev) {
                ev.stopPropagation()
-@@ -2478,7 +2742,7 @@ window.__ModuleLoader__.load({
+@@ -2478,7 +2751,7 @@ window.__ModuleLoader__.load({
                var item = document.createElement('div')
                item.style.cssText = 'padding:6px 0;border-top:1px solid var(--dsw-alias-border-strong,#444);'
                var num = document.createElement('span')
@@ -700,12 +709,12 @@ index c8e0c23..b4291f7 100644
                num.textContent = String(i + 1)
                var body = document.createElement('span')
                body.style.cssText = 'font-size:11px;line-height:1.5;color:var(--dsw-alias-label-tertiary);'
-@@ -2862,7 +3126,7 @@ window.__ModuleLoader__.load({
+@@ -2862,7 +3135,7 @@ window.__ModuleLoader__.load({
      }
  
      exports.name = '@changfenhuang/dsh-annotation'
 -    exports.inject = ['sessions', 'conversation', 'locale', 'uiSession']
-+    exports.inject = ['sessions', 'conversation', 'locale', 'uiSession', 'remote']
++    exports.inject = ['sessions', 'conversation', 'locale', 'uiSession', 'remote', 'remote.speech']
      exports.apply = apply
  
      return module.exports
