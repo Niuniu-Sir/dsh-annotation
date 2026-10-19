@@ -26,11 +26,11 @@
 | 仓库 | https://github.com/Niuniu-Sir/dsh-annotation |
 | 修改部分版权 | `Copyright (c) 2026 Niuniu-Sir` |
 | 版本线 | 自 **v1.0.0** 起独立编号，**不跟进上游更新** |
-| 与上游的关系 | v1.0.0–v1.0.9 = 上游 v1.4.11 + 下列 18 项改动 |
+| 与上游的关系 | v1.0.0–v1.0.10 = 上游 v1.4.11 + 下列 19 项改动 |
 
 ## 三、修改清单（完整、可逐行核对）
 
-全部差异集中在 **1 个文件**（`client.js`），累计共 **131 行新增 / 64 行删除**，逐行补丁见
+全部差异集中在 **1 个文件**（`client.js`），累计共 **147 行新增 / 79 行删除**，逐行补丁见
 [`patches/01-toolbar-position-and-label.patch`](./patches/01-toolbar-position-and-label.patch)。
 
 | # | 改动 | 位置 | 原因 |
@@ -53,6 +53,7 @@
 | 16 | 工具条与选区之间留白收紧：按**实测工具条高度**定位，底边距选区上沿固定 **4px**（上游按 40px 估算高度 + 8px 间距，实际留白约 20px） | `placeAbove()` 增加 gap 参数、`render()` 创建工具条后按 `offsetHeight` 二次定位、两处滚动重算点 | 工具条悬空过高，观感松散；要求紧贴选区 |
 | 17 | 工具条字号与字族跟随界面：根节点 `[data-annotation-for-dsh]` 补 `font-family: var(--dsw-font-family)`；工具条字号改为 `clamp(12px, 界面字号 × .72, 16px)`（18px→约13px、14px→12px、22px→16px）；按钮字号改为继承。同时收紧盒子：内边距 `2→1px`、按钮高 `28px→auto(min 22px)`、横向内边距 `10→6px`、圆角 `12/14→10/9px` | 样式字符串（根规则、`.dsh-ann-bar`、`.dsh-ann-ghost`） | 工具条字体/字号与界面不一致（曾写死 12px），且悬浮框比文字大一圈 |
 | 18 | 深色模式适配：写死颜色改走宿主主题 token——工具条边框 `#1c326b` 改为 `var(--maid-navy-800, var(--dsw-alias-border-inverted, #1c326b))`；发送键 `#111/#fff` 改为 `--dsw-alias-button-primary-fill`/`--dsw-alias-label-primary-foreground`；删除与错误红改为 `--dsw-alias-state-error-primary`；编号白字改为 `--dsw-alias-label-primary-foreground` | `.dsh-ann-bar`、`.dsh-ann-send`、`.dsh-ann-danger`、`.dsh-ann-qnum`/`.dsh-ann-num` 及两处内联样式 | 深色模式下纯黑发送键、固定深蓝边框与主题不协调；要求插件底色/强调色随主题一致 |
+| 19 | 编号角标收紧：`.dsh-ann-num` 由 `16×16/10px、padding 0 4px`（内容盒约 26×18）改为 `border-box 14×14/9px、padding 0 2px、line-height 1、tabular-nums`；`.dsh-ann-qnum` 同步 `14×14/9px`；定位常量宽高 `26/18→14/14`、上沿 `20→16`、碰撞步长 `18→14`、视口边距同步收紧 | `.dsh-ann-num`、`.dsh-ann-qnum`、`buildMarkers()` 内定位常量 | 数字在角标里显得空、角标比文字大 |
 
 **未改动**：颜色与主题变量、圆角、按钮数量（上游就是单个按钮）、发送格式（协议块）、锚点与滚动逻辑、界面语言体系与协议块。
 

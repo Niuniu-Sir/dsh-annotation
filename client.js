@@ -126,9 +126,9 @@ window.__ModuleLoader__.load({
         '.dsh-ann-qitem { display: flex; align-items: flex-start; gap: 8px; padding: 6px 8px;',
         '  border-radius: 8px; background: var(--dsw-alias-bg-layer-1); }',
         '.dsh-ann-qnum { flex: none; display: inline-flex; align-items: center; justify-content: center;',
-        '  width: 16px; height: 16px; margin-top: 1px; border-radius: 8px;',
+        '  box-sizing: border-box; min-width: 14px; height: 14px; padding: 0 2px; margin-top: 1px; border-radius: 7px;',
         '  background: var(--dsw-alias-text-accent, #4c9aff); color: var(--dsw-alias-label-primary-foreground, #fff);',
-        '  font-size: 10px; font-weight: 700; }',
+        '  font-size: 9px; font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums; }',
         '.dsh-ann-qbody { flex: 1; min-width: 0; }',
         '.dsh-ann-qtext { font-size: 12px; line-height: 1.5;',
         '  color: var(--dsw-alias-label-tertiary); max-height: 36px; overflow: hidden;',
@@ -157,10 +157,11 @@ window.__ModuleLoader__.load({
         '.dsh-ann-hl { position: fixed; z-index: 900; background: rgba(255, 195, 0, .15);',
         '  border-radius: 2px; pointer-events: none; animation: dsh-ann-fadein .15s ease; }',
         '.dsh-ann-num { position: fixed; z-index: 940; display: inline-flex; align-items: center;',
-        '  justify-content: center; min-width: 16px; height: 16px; padding: 0 4px;',
-        '  border-radius: 8px; border: 1px solid rgba(255, 255, 255, .3);',
+        '  justify-content: center; box-sizing: border-box; min-width: 14px; height: 14px; padding: 0 2px;',
+        '  border-radius: 7px; border: 1px solid rgba(255, 255, 255, .3);',
         '  background: var(--dsw-alias-text-accent, #4c9aff); color: var(--dsw-alias-label-primary-foreground, #fff);',
-        '  font-family: var(--dsw-font-family, system-ui); font-size: 10px; font-weight: 700;',
+        '  font-family: var(--dsw-font-family, system-ui); font-size: 9px; font-weight: 700; line-height: 1;',
+        '  font-variant-numeric: tabular-nums;',
         '  box-shadow: 0 1px 4px rgba(0,0,0,.35); pointer-events: auto; cursor: pointer;',
         '  transition: filter .12s ease; }',
         '.dsh-ann-num:hover { filter: brightness(1.15); }',
@@ -1805,8 +1806,8 @@ window.__ModuleLoader__.load({
           }
           if (anchor === null && rects.length > 0 && rects[0].width > 0) anchor = rects[0]
           if (anchor !== null) {
-            var chipTop = anchor.top - 20
-            if (chipTop < 4) chipTop = Math.min(anchor.top + 2, window.innerHeight - 22)
+            var chipTop = anchor.top - 16
+            if (chipTop < 4) chipTop = Math.min(anchor.top + 2, window.innerHeight - 18)
             if (chipTop < 4) chipTop = 4
             // #63：编号下限抬到会话列可视区上沿 + 4px——原文起于其下时，把落在
             // 顶栏横带里的编号压回正文区（而不是被裁成半截或整条跳过）；原文
@@ -1815,7 +1816,7 @@ window.__ModuleLoader__.load({
             var col = conversationColumnRange()
             var chipFloor = col !== null ? col.top + 4 : 4
             if (col !== null && anchor.top >= chipFloor && chipTop < chipFloor) chipTop = chipFloor
-            var chipLeft = Math.max(4, Math.min(anchor.left - 4, window.innerWidth - 24))
+            var chipLeft = Math.max(4, Math.min(anchor.left - 4, window.innerWidth - 18))
             // 编号只允许出现在「会话正文实际看得见」的地方：跟正文一样，滚出
             // 内容可视区就消失，绝不贴边钉住（钉住会浮在输入框上/下面的空处）。
             // 两条判据：① 落在正文滚动容器里；② 不与宿主遮挡 UI（会话头部、
@@ -1825,15 +1826,15 @@ window.__ModuleLoader__.load({
             var views = hostLocalRects('scrollBody')
             for (var vc = 0; vc < views.length; vc++) {
               var vr = views[vc]
-              if (chipLeft + 26 <= vr.left || chipLeft >= vr.right) continue
-              if (chipTop < vr.top || chipTop + 18 > vr.bottom) skipChip = true
+              if (chipLeft + 14 <= vr.left || chipLeft >= vr.right) continue
+              if (chipTop < vr.top || chipTop + 14 > vr.bottom) skipChip = true
               break
             }
             var blockers = hostHeaderRects().concat(hostComposerRects())
             for (var bc = 0; bc < blockers.length && !skipChip; bc++) {
               var bk = blockers[bc]
-              if (chipLeft + 26 <= bk.left || chipLeft >= bk.right) continue
-              if (chipTop + 18 > bk.top && chipTop < bk.bottom) skipChip = true
+              if (chipLeft + 14 <= bk.left || chipLeft >= bk.right) continue
+              if (chipTop + 14 > bk.top && chipTop < bk.bottom) skipChip = true
             }
             if (!skipChip) {
               var chip = document.createElement('div')
@@ -1844,14 +1845,14 @@ window.__ModuleLoader__.load({
                 var clash = false
                 for (var p = 0; p < placed.length; p++) {
                   var bp = placed[p]
-                  if (Math.abs(bp.left - chipLeft) < 18 && Math.abs(bp.top - chipTop) < 18) {
+                  if (Math.abs(bp.left - chipLeft) < 14 && Math.abs(bp.top - chipTop) < 14) {
                     clash = true
                     break
                   }
                 }
                 if (!clash) break
-                chipLeft += 18
-                if (chipLeft > window.innerWidth - 24) { chipLeft = 4; chipTop += 18 }
+                chipLeft += 14
+                if (chipLeft > window.innerWidth - 18) { chipLeft = 4; chipTop += 14 }
                 tries++
               }
               placed.push({ left: chipLeft, top: chipTop })

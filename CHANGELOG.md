@@ -3,6 +3,19 @@
 > 本仓库**从 v1.0.0 起独立编号，不跟进上游更新**。
 > 上游对应的版本见每条记录；上游自身的历史更新记录完整归档在 [`CHANGELOG.upstream.md`](./CHANGELOG.upstream.md)（未改动）。
 
+## [1.0.10] — 2026-10-19
+
+上游对应仍为 **v1.4.11**（提交 `14111b2`）。
+
+### 改动（只动 `client.js` 样式与定位常量）
+
+- **编号角标收紧**：`.dsh-ann-num` 由 `min-width:16px; height:16px; padding:0 4px; font-size:10px`（内容盒下实际约 26×18）改为 `box-sizing:border-box; min-width:14px; height:14px; padding:0 2px; font-size:9px; line-height:1`，并加 `font-variant-numeric: tabular-nums`；数字不再悬在大片空白里。
+- **编辑卡里的序号同步**：`.dsh-ann-qnum` 由固定 `16×16/10px` 改为 `min-width:14px/9px`、`border-box`。
+- **定位常量随尺寸同步**：角标宽高假设 `26/18` → `14/14`，上沿偏移 `20` → `16`，碰撞与换行步长 `18` → `14`，视口边距同步收紧；角标位置不会因缩小而偏移。
+- 多位数（10 以上）时角标会按内容自然变宽。
+
+**未改动**：颜色/主题 token、字号体系、交互逻辑、协议块与语言。
+
 ## [1.0.9] — 2026-10-19
 
 上游对应仍为 **v1.4.11**（提交 `14111b2`）。
