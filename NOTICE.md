@@ -26,11 +26,11 @@
 | 仓库 | https://github.com/Niuniu-Sir/dsh-annotation |
 | 修改部分版权 | `Copyright (c) 2026 Niuniu-Sir` |
 | 版本线 | 自 **v1.0.0** 起独立编号，**不跟进上游更新** |
-| 与上游的关系 | v1.0.0–v1.0.25 = 上游 v1.4.11 + 下列 34 项改动 |
+| 与上游的关系 | v1.0.0–v1.0.26 = 上游 v1.4.11 + 下列 35 项改动 |
 
 ## 三、修改清单（完整、可逐行核对）
 
-全部代码差异集中在 **`client.js`**（**421 行新增 / 107 行删除**）；另有 `package.json` 的 `dsh.client.inject` 增加 `@deepseek-ai/dsh-api-remotes`、`@deepseek-ai/dsh-api-gateway` 两项依赖。逐行补丁见
+全部代码差异集中在 **`client.js`**（**424 行新增 / 108 行删除**）；另有 `package.json` 的 `dsh.client.inject` 增加 `@deepseek-ai/dsh-api-remotes`、`@deepseek-ai/dsh-api-gateway` 两项依赖。逐行补丁见
 [`patches/01-toolbar-position-and-label.patch`](./patches/01-toolbar-position-and-label.patch)。
 
 | # | 改动 | 位置 | 原因 |
@@ -69,6 +69,7 @@
 | 32 | 交互调整：点 ✓/保存或回车提交时，若正在录音则先停止、等待转写、并入批注后再保存（`flushVoice()` + `saveAnnotation()` 异步化）；语音失败只写 console，不再显示卡片红字或 toast | `client.js` `flushVoice()`、`saveAnnotation()`、`voiceError()` | 用户要求提交即转写，且不想看到语音错误提示 |
 | 33 | **提示词精简（zh/en/ru）**：标题 `批注（{n} 条）：`、指令 `请按「Annotation N：…」逐条回应。`；纯批注块识别改为「前缀+数字+后缀」正则，去重哨兵兼容新旧标题；测试断言同步 | `client.js` 三语 `block` 文案、`hideAnnotationBlock()`、`BLOCK_HEADS`；`test/*.test.mjs` | 用户看到实际发送的批注块，认为冗长 |
 | 34 | 提示词再精简：去掉独立指令行，回复格式并入标题（`批注 {n} 条（按 Annotation N 回复）：`）；纯批注块识别改为「标题 + 存在编号条目 + 无独立分隔行」，不再依赖指令行 | `client.js` `block` 文案、`buildBlock()`、`hideAnnotationBlock()` | 用户要求只保留「我说的话对应你哪段内容」这一层信息 |
+| 35 | 提示词最终精简：标题去掉回复格式提示，只保留 `批注 {n} 条：`；去重哨兵改为正则（`^批注 \d+ 条` 等）兼容历史标题 | `client.js` 三语 `block` 文案、`BLOCK_HEAD_RES`/`hasAnnotationBlock()` | 用户明确要求去掉「（按 Annotation N 回复）」 |
 
 **未改动**：颜色与主题变量、圆角、按钮数量（上游就是单个按钮）、发送格式（协议块）、锚点与滚动逻辑、界面语言体系与协议块。
 

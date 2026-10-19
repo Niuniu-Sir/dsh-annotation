@@ -42,7 +42,7 @@ function harness(lang, draft, sourcePath, sessionsOverride, storageOverride) {
 
 /** Языковая таблица: разделитель вопроса, инструкция с вопросом, заголовок блока. */
 const LANGS = {
-  zh: { marker: '提问：', withQuestion: /\n提问：\n/, head: '批注 1 条（按 Annotation N 回复）：', other: 'en' },
+  zh: { marker: '提问：', withQuestion: /\n提问：\n/, head: '批注 1 条：', other: 'en' },
   en: { marker: 'Ask:', withQuestion: /\nAsk:\n/, head: 'Annotations (1)', other: 'zh' },
   ru: { marker: 'Вопрос:', withQuestion: /\nВопрос:\n/, head: 'Аннотации (1)', other: 'zh' },
 }
@@ -56,7 +56,7 @@ for (const lang of Object.keys(LANGS)) {
       const sent = h.shell.state.getSnapshot().draft
       assert.doesNotMatch(sent, /(?:提问：|Ask:|Вопрос:)\s*$/)
       assert.doesNotMatch(sent, L.withQuestion)
-      assert.match(sent, /Annotation/)
+      assert.match(sent, /\d+\. /)
       assert.equal(h.api.attachAndSend({}), true)
       assert.equal(h.shell.state.getSnapshot().draft, sent, '重复发送前不重复拼稿')
       h.render(sent)
@@ -105,14 +105,14 @@ for (const lang of ['zh', 'en']) {
     const storage = { getItem: (k) => (k === 'dsh.sessions.current' ? JSON.stringify({ sessionId: 'session-a' }) : null) }
     const h = harness(lang, '我的问题', undefined, kernel, storage)
     assert.equal(h.api.attachAndSend({}), true)
-    assert.match(h.shell.state.getSnapshot().draft, /Annotation/)
+    assert.match(h.shell.state.getSnapshot().draft, /\d+\. /)
   })
 
   test(`${lang}: 无持久化键时退回 retainedBy.mainView 公开面`, () => {
     const kernel = newKernelList({ 'session-b': { retainedBy: { mainView: 1 } } })
     const h = harness(lang, '我的问题', undefined, kernel)
     assert.equal(h.api.attachAndSend({}), true)
-    assert.match(h.shell.state.getSnapshot().draft, /Annotation/)
+    assert.match(h.shell.state.getSnapshot().draft, /\d+\. /)
   })
 
   test(`${lang}: 旧内核形状（仅 list.current）下保持兼容`, () => {
@@ -122,6 +122,6 @@ for (const lang of ['zh', 'en']) {
     }
     const h = harness(lang, '', undefined, legacySessions)
     assert.equal(h.api.attachAndSend({}), true)
-    assert.match(h.shell.state.getSnapshot().draft, /Annotation/)
+    assert.match(h.shell.state.getSnapshot().draft, /\d+\. /)
   })
 }

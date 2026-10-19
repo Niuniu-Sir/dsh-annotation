@@ -215,10 +215,10 @@ window.__ModuleLoader__.load({
           noSession: '无法确定当前会话，批注未拼入（已保留，将随下一条消息重试）',
         },
         block: {
-          head: '批注 {n} 条（按 Annotation N 回复）：',
+          head: '批注 {n} 条：',
           notePrefix: '批注：',
           format: '',
-          headOnly: '批注 {n} 条（按 Annotation N 回复）：',
+          headOnly: '批注 {n} 条：',
           formatOnly: '',
           marker: '提问：',
         },
@@ -252,10 +252,10 @@ window.__ModuleLoader__.load({
           noSession: 'Cannot determine the current session; annotations kept pending and will retry with your next message',
         },
         block: {
-          head: 'Annotations ({n}) — reply as "Annotation N: …":',
+          head: 'Annotations ({n}):',
           notePrefix: 'Note: ',
           format: '',
-          headOnly: 'Annotations ({n}) — reply as "Annotation N: …":',
+          headOnly: 'Annotations ({n}):',
           formatOnly: '',
           marker: 'Ask:',
         },
@@ -296,10 +296,10 @@ window.__ModuleLoader__.load({
         // работает замена в ответе ассистента (decorateAnnotationLabels), и он не
         // зависит от языка интерфейса.
         block: {
-          head: 'Аннотации ({n}) — формат "Annotation N: …":',
+          head: 'Аннотации ({n}):',
           notePrefix: 'Примечание: ',
           format: '',
-          headOnly: 'Аннотации ({n}) — формат "Annotation N: …":',
+          headOnly: 'Аннотации ({n}):',
           formatOnly: '',
           marker: 'Вопрос:',
         },
@@ -347,18 +347,20 @@ window.__ModuleLoader__.load({
       return forms[index] !== undefined ? forms[index] : forms[0]
     }
     // 批注块头部哨兵（zh/en/ru 都识别；兼容历史消息与跨语言切换）。
-    var BLOCK_HEADS = {
-      zh: ['（按 Annotation N 回复）', '我批注了以下'],
-      en: ['— reply as "Annotation N', 'I annotated the following'],
-      ru: ['— формат "Annotation N', 'Я аннотировал следующие'],
-    }
+    // 批注块头部哨兵：当前紧凑标题按「批注 N 条：」等模式匹配，历史版本标题保留兼容。
+    var BLOCK_HEAD_RES = [
+      /^批注 \d+ 条[（(：:]/,
+      /^Annotations \(\d+\)/,
+      /^Аннотации \(\d+\)/,
+      /^批注（\d+ 条）/,
+      /我批注了以下/,
+      /I annotated the following/,
+      /Я аннотировал следующие/,
+      /（按 Annotation N 回复）/,
+    ]
     function hasAnnotationBlock(text) {
-      for (var lang in BLOCK_HEADS) {
-        if (!Object.prototype.hasOwnProperty.call(BLOCK_HEADS, lang)) continue
-        var heads = BLOCK_HEADS[lang]
-        for (var i = 0; i < heads.length; i++) {
-          if (text.indexOf(heads[i]) !== -1) return true
-        }
+      for (var i = 0; i < BLOCK_HEAD_RES.length; i++) {
+        if (BLOCK_HEAD_RES[i].test(text)) return true
       }
       return false
     }

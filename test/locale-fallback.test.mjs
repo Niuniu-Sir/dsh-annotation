@@ -35,7 +35,7 @@ test('протокол блока переведён целиком, включ�
   assert.equal(api.t('block.marker'), 'Вопрос:')
   assert.equal(api.t('block.notePrefix'), 'Примечание: ')
   assert.equal(api.t('block.format', { n: 2 }), '')
-  assert.match(api.t('block.head', { n: 2 }), /Annotation N/)
+  assert.equal(api.t('block.headOnly', { n: 2 }), 'Аннотации (2):')
   // 未知 ключ не подменяется чужим языком
   assert.equal(api.t('nope.missing'), 'nope.missing')
 })
