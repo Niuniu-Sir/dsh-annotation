@@ -100,6 +100,11 @@ window.__ModuleLoader__.load({
         '.dsh-ann-mic:hover:not(:disabled) { background: var(--dsw-alias-interactive-bg-hover); }',
         '.dsh-ann-mic.is-rec { border-color: var(--dsw-alias-state-error-primary, #e5484d); color: var(--dsw-alias-state-error-primary, #e5484d); animation: dsh-ann-pulse 1.1s ease-in-out infinite; }',
         '.dsh-ann-mic:disabled { opacity: .4; cursor: default; }',
+        '.dsh-ann-input-wrap { position: relative; flex: 1; min-width: 0; display: flex; }',
+        '.dsh-ann-input-wrap .dsh-ann-input-line { width: 100%; padding-right: 30px; }',
+        '.dsh-ann-mic-inline { position: absolute; right: 3px; top: 50%; transform: translateY(-50%); width: 22px; height: 22px; border: none; background: transparent; }',
+        '.dsh-ann-mic-inline svg { width: 12px; height: 12px; }',
+        '.dsh-ann-mic-inline:hover:not(:disabled) { background: var(--dsw-alias-interactive-bg-hover); }',
         '@keyframes dsh-ann-pulse { 0%, 100% { opacity: 1; } 50% { opacity: .45; } }',
         '.dsh-ann-action svg { width: 12px; height: 12px; }',
         '.dsh-ann-icon { display: inline-flex; align-items: center; justify-content: center;',
@@ -1716,8 +1721,12 @@ window.__ModuleLoader__.load({
                ta.className = 'dsh-ann-input dsh-ann-input-line'
                var line = document.createElement('div')
                line.className = 'dsh-ann-line'
-               line.appendChild(ta)
-               line.appendChild(micBtn)
+               var inputWrap = document.createElement('div')
+               inputWrap.className = 'dsh-ann-input-wrap'
+               micBtn.classList.add('dsh-ann-mic-inline')
+               inputWrap.appendChild(ta)
+               inputWrap.appendChild(micBtn)
+               line.appendChild(inputWrap)
                var okBtn = document.createElement('button')
                okBtn.type = 'button'
                okBtn.className = 'dsh-ann-send'

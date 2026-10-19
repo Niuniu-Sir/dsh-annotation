@@ -26,11 +26,11 @@
 | 仓库 | https://github.com/Niuniu-Sir/dsh-annotation |
 | 修改部分版权 | `Copyright (c) 2026 Niuniu-Sir` |
 | 版本线 | 自 **v1.0.0** 起独立编号，**不跟进上游更新** |
-| 与上游的关系 | v1.0.0–v1.0.15 = 上游 v1.4.11 + 下列 24 项改动 |
+| 与上游的关系 | v1.0.0–v1.0.16 = 上游 v1.4.11 + 下列 25 项改动 |
 
 ## 三、修改清单（完整、可逐行核对）
 
-全部代码差异集中在 **`client.js`**（**316 行新增 / 85 行删除**）；另有 `package.json` 的 `dsh.client.inject` 增加 `@deepseek-ai/dsh-api-remotes`、`@deepseek-ai/dsh-api-gateway` 两项依赖。逐行补丁见
+全部代码差异集中在 **`client.js`**（**325 行新增 / 85 行删除**）；另有 `package.json` 的 `dsh.client.inject` 增加 `@deepseek-ai/dsh-api-remotes`、`@deepseek-ai/dsh-api-gateway` 两项依赖。逐行补丁见
 [`patches/01-toolbar-position-and-label.patch`](./patches/01-toolbar-position-and-label.patch)。
 
 | # | 改动 | 位置 | 原因 |
@@ -59,6 +59,7 @@
 | 22 | 编辑卡中文文案去掉「批注」二字：标题 `编辑批注→编辑`、保存按钮 `保存批注→保存`（英文/俄文未动） | `STR.zh.edit.editTitle`、`STR.zh.edit.save` | 编辑卡里「批注」二字被视为多余 |
 | 23 | 批注输入框新增**语音输入**：录音按钮（新增/编辑卡各一个）、MediaRecorder 采集、16 kHz 单声道 PCM16 WAV 重采样、`ctx.remote.speech.transcribe` 调用宿主 SenseVoice；取消/关闭/失败时释放麦克风；`package.json` 的 `dsh.client.inject` 增加 api-remotes 与 api-gateway | `client.js` 语音段与卡片渲染、`package.json` | 要求与主输入框一致的语音输入能力 |
 | 24 | 语音失败改为**卡片内持久红字 + console.error**，并带具体原因（remote 缺失/麦克风权限/转写错误对象/异常 message），替代一闪而过的 toast | `client.js` `voiceError()` 与各处调用 | 首次实测「不行」但抓不到错误信息 |
+| 25 | 新增批注卡的话筒改为**输入框内部右侧小图标**：`.dsh-ann-input-wrap` 包裹输入框与话筒，话筒绝对定位、输入框右侧留 30px；编辑卡仍用底部按钮行话筒 | `client.js` 新增卡渲染与 `.dsh-ann-input-wrap/.dsh-ann-mic-inline` 样式 | 新增卡上看不到话筒/位置不明显，要求两张卡都能在输入处直接说话 |
 
 **未改动**：颜色与主题变量、圆角、按钮数量（上游就是单个按钮）、发送格式（协议块）、锚点与滚动逻辑、界面语言体系与协议块。
 
