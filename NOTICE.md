@@ -26,11 +26,11 @@
 | 仓库 | https://github.com/Niuniu-Sir/dsh-annotation |
 | 修改部分版权 | `Copyright (c) 2026 Niuniu-Sir` |
 | 版本线 | 自 **v1.0.0** 起独立编号，**不跟进上游更新** |
-| 与上游的关系 | v1.0.0–v1.0.22 = 上游 v1.4.11 + 下列 31 项改动 |
+| 与上游的关系 | v1.0.0–v1.0.23 = 上游 v1.4.11 + 下列 32 项改动 |
 
 ## 三、修改清单（完整、可逐行核对）
 
-全部代码差异集中在 **`client.js`**（**365 行新增 / 86 行删除**）；另有 `package.json` 的 `dsh.client.inject` 增加 `@deepseek-ai/dsh-api-remotes`、`@deepseek-ai/dsh-api-gateway` 两项依赖。逐行补丁见
+全部代码差异集中在 **`client.js`**（**376 行新增 / 87 行删除**）；另有 `package.json` 的 `dsh.client.inject` 增加 `@deepseek-ai/dsh-api-remotes`、`@deepseek-ai/dsh-api-gateway` 两项依赖。逐行补丁见
 [`patches/01-toolbar-position-and-label.patch`](./patches/01-toolbar-position-and-label.patch)。
 
 | # | 改动 | 位置 | 原因 |
@@ -66,6 +66,7 @@
 | 29 | **语音服务名纠正为 `remote.speech`**：`exports.inject` 增加 `'remote.speech'`，`speechService()` 优先 `ctx.get('remote.speech')`；新增卡话筒改为 flex 行内子元素 + 内联样式，确保可见 | `client.js` `exports.inject`、`speechService()`、新增卡渲染 | 语音插件自身 `ctx.inject(["remote.speech", …])`，服务名带命名空间，此前只注入 `remote` 故取不到 |
 | 30 | **修复新增卡话筒被移走**：话筒节点先加到输入行，随后又被 `row.appendChild(micBtn)` 移到编辑卡底部行（新增态该行 `display:none`），导致新增卡看不到话筒；现改为仅编辑态才放入底部行 | `client.js` `render()` 卡片渲染 | 实测：编辑卡语音正常、新增卡无话筒 |
 | 31 | 整体复查小修：删除 v1.0.16 遗留的死样式（`.dsh-ann-input-wrap` / `.dsh-ann-mic-inline`）；麦克风增加 `pending` 守卫，防止授权期间重复开流；授权晚到且卡片已关闭时释放音轨，避免孤儿录音；关闭卡片时取消等待中的授权 | `client.js` 样式表、`startVoice()`、`closeToolbar()` | 代码走查发现的资源泄漏与重复开流风险 |
+| 32 | 交互调整：点 ✓/保存或回车提交时，若正在录音则先停止、等待转写、并入批注后再保存（`flushVoice()` + `saveAnnotation()` 异步化）；语音失败只写 console，不再显示卡片红字或 toast | `client.js` `flushVoice()`、`saveAnnotation()`、`voiceError()` | 用户要求提交即转写，且不想看到语音错误提示 |
 
 **未改动**：颜色与主题变量、圆角、按钮数量（上游就是单个按钮）、发送格式（协议块）、锚点与滚动逻辑、界面语言体系与协议块。
 

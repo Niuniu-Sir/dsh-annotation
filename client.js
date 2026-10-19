@@ -1495,7 +1495,7 @@ window.__ModuleLoader__.load({
       }
 
       // ---------- 语音输入：复用宿主 speech Remote（与输入框麦克风同一识别服务）----------
-      var voice = { recorder: null, stream: null, chunks: [], busy: false, cancel: false, pending: false }
+      var voice = { recorder: null, stream: null, chunks: [], busy: false, cancel: false, pending: false, stopWaiter: null }
       function speechService() {
         // 语音 namespace 由语音输入插件挂在 cordis 服务 "remote.speech" 上
         // （api-gateway remoteServiceKey：`remote.${namespace}`）。
@@ -1562,16 +1562,8 @@ window.__ModuleLoader__.load({
         return btoa(text)
       }
       function voiceError(msg) {
-        try { console.error('[dsh-annotation] voice:', msg) } catch (_) {}
-        // 卡片还开着时把错误写进卡片，避免 toast 一闪而过、无法复制定位
-        try {
-          if (ui.mode === 'editing') {
-            ui.error = '语音：' + msg
-            render()
-            return
-          }
-        } catch (_) {}
-        showToast('语音：' + msg)
+        // 语音失败不打断用户：只在控制台留痕，不写卡片红字、不弹 toast。
+        try { console.warn('[dsh-annotation] voice:', msg) } catch (_) {}
       }
 
       function createMicButton(ta) {
@@ -1629,15 +1621,27 @@ window.__ModuleLoader__.load({
         }
         voice.stream = null
       }
+      function resolveStopWaiter() {
+        var r = voice.stopWaiter
+        voice.stopWaiter = null
+        if (typeof r === 'function') r()
+      }
       function finishVoice(btn, ta) {
         var rec = voice.recorder
         voice.recorder = null
         btn.classList.remove('is-rec')
         btn.title = '语音输入'
         releaseTracks()
-        if (voice.cancel) { voice.cancel = false; return }
-        if (rec === null || voice.chunks.length === 0) { voiceError('没有录到声音'); return }
-        transcribeVoice(btn, ta, rec)
+        if (voice.cancel) { voice.cancel = false; resolveStopWaiter(); return }
+        if (rec === null || voice.chunks.length === 0) { voiceError('没有录到声音'); resolveStopWaiter(); return }
+        transcribeVoice(btn, ta, rec).finally(resolveStopWaiter)
+      }
+      /** 保存/提交前调用：若正在录音或等待授权，先收尾并等转写完成。 */
+      async function flushVoice() {
+        if (voice.pending) { voice.cancel = true; voice.pending = false; return }
+        if (voice.recorder === null) return
+        if (voice.recorder.state !== 'recording') return
+        await new Promise(function (resolve) { voice.stopWaiter = resolve; stopVoice() })
       }
       async function transcribeVoice(btn, ta, rec) {
         btn.disabled = true
@@ -2264,7 +2268,13 @@ window.__ModuleLoader__.load({
         })
       }
 
-      function saveAnnotation() {
+      async function saveAnnotation() {
+        if (ui.busy) return
+        if (voice.recorder !== null || voice.pending) {
+          ui.busy = true
+          try { await flushVoice() } catch (_) {}
+          ui.busy = false
+        }
         var text = ui.quote
         if (text === '') { ui.error = t('error.noSelection'); render(); return }
         var note = ui.noteDraft.trim()
