@@ -1796,7 +1796,7 @@ window.__ModuleLoader__.load({
           save.appendChild(document.createTextNode(t('edit.save')))
           save.addEventListener('click', saveAnnotation)
           row.appendChild(delBtn)
-          row.appendChild(micBtn)
+          if (ui.editingId !== null) { row.appendChild(micBtn) }
           row.appendChild(cancelBtn)
           row.appendChild(save)
           if (ui.editingId === null) { row.style.display = 'none' }

@@ -1,5 +1,5 @@
 diff --git a/client.js b/client.js
-index c8e0c23..7099368 100644
+index c8e0c23..15825ad 100644
 --- a/client.js
 +++ b/client.js
 @@ -60,65 +60,86 @@ window.__ModuleLoader__.load({
@@ -570,7 +570,7 @@ index c8e0c23..7099368 100644
            save.appendChild(document.createTextNode(t('edit.save')))
            save.addEventListener('click', saveAnnotation)
 +          row.appendChild(delBtn)
-+          row.appendChild(micBtn)
++          if (ui.editingId !== null) { row.appendChild(micBtn) }
 +          row.appendChild(cancelBtn)
            row.appendChild(save)
 -          card.appendChild(row)

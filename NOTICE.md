@@ -26,7 +26,7 @@
 | 仓库 | https://github.com/Niuniu-Sir/dsh-annotation |
 | 修改部分版权 | `Copyright (c) 2026 Niuniu-Sir` |
 | 版本线 | 自 **v1.0.0** 起独立编号，**不跟进上游更新** |
-| 与上游的关系 | v1.0.0–v1.0.20 = 上游 v1.4.11 + 下列 29 项改动 |
+| 与上游的关系 | v1.0.0–v1.0.21 = 上游 v1.4.11 + 下列 30 项改动 |
 
 ## 三、修改清单（完整、可逐行核对）
 
@@ -64,6 +64,7 @@
 | 27 | 诊断串加入 **build 版本标记**并写入 `localStorage['dsh-ann-last-voice-error']`，用于确认界面实际加载的客户端版本、便于离线取错误 | `client.js` `voiceDebugInfo()` | 重启后仍报错，需要确认加载版本与上下文事实 |
 | 28 | **修复语音取不到 remote 的根因**：`exports.inject` 增加 `'remote'`（此前只声明 sessions/conversation/locale/uiSession，导致 `ctx.remote` 访问抛错）；诊断函数改为逐段 try，抛错时仍输出 build 与 ctx 服务列表 | `client.js` `exports.inject`、`voiceDebugInfo()` | 红字显示 `[dbg失败]`，证明访问 `ctx.remote` 即抛异常 |
 | 29 | **语音服务名纠正为 `remote.speech`**：`exports.inject` 增加 `'remote.speech'`，`speechService()` 优先 `ctx.get('remote.speech')`；新增卡话筒改为 flex 行内子元素 + 内联样式，确保可见 | `client.js` `exports.inject`、`speechService()`、新增卡渲染 | 语音插件自身 `ctx.inject(["remote.speech", …])`，服务名带命名空间，此前只注入 `remote` 故取不到 |
+| 30 | **修复新增卡话筒被移走**：话筒节点先加到输入行，随后又被 `row.appendChild(micBtn)` 移到编辑卡底部行（新增态该行 `display:none`），导致新增卡看不到话筒；现改为仅编辑态才放入底部行 | `client.js` `render()` 卡片渲染 | 实测：编辑卡语音正常、新增卡无话筒 |
 
 **未改动**：颜色与主题变量、圆角、按钮数量（上游就是单个按钮）、发送格式（协议块）、锚点与滚动逻辑、界面语言体系与协议块。
 
