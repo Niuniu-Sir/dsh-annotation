@@ -189,9 +189,9 @@ window.__ModuleLoader__.load({
         },
         edit: {
           addTitle: '添加批注',
-          editTitle: '编辑批注',
+          editTitle: '编辑',
           placeholder: '写下批注…（可留空，保存后仅标记原文）',
-          save: '保存批注',
+          save: '保存',
           delete: '删除这条批注',
         },
         common: { cancel: '取消' },
