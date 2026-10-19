@@ -1517,12 +1517,14 @@ window.__ModuleLoader__.load({
       function voiceDebugInfo() {
         try {
           var keys = []
-          for (var k in ctx) { if (k.charAt(0) !== '_' && typeof ctx[k] !== 'function') keys.push(k) }
-          var hasRemote = (ctx.remote !== undefined && ctx.remote !== null)
+          try { for (var k in ctx) { if (k.charAt(0) !== '_' && typeof ctx[k] !== 'function') keys.push(k) } } catch (_) {}
+          var remote = null
+          try { remote = ctx.remote } catch (_) { remote = 'throw' }
+          var hasRemote = (remote !== null && remote !== undefined && remote !== 'throw')
           var ns = ''
           if (hasRemote) {
             var arr = []
-            for (var r in ctx.remote) { if (r.charAt(0) !== '$') arr.push(r) }
+            try { for (var r in remote) { if (r.charAt(0) !== '$') arr.push(r) } } catch (_) {}
             ns = arr.slice(0, 10).join('/')
           }
           var msg = ' [build=v1.0.18 ctx=' + keys.slice(0, 12).join(',') + ' remote=' + (hasRemote ? 'yes' : 'no') + ' ns=' + ns + ']'
@@ -3124,7 +3126,7 @@ window.__ModuleLoader__.load({
     }
 
     exports.name = '@changfenhuang/dsh-annotation'
-    exports.inject = ['sessions', 'conversation', 'locale', 'uiSession']
+    exports.inject = ['sessions', 'conversation', 'locale', 'uiSession', 'remote']
     exports.apply = apply
 
     return module.exports

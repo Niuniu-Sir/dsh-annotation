@@ -1,5 +1,5 @@
 diff --git a/client.js b/client.js
-index c8e0c23..fb8a79f 100644
+index c8e0c23..b4291f7 100644
 --- a/client.js
 +++ b/client.js
 @@ -60,65 +60,86 @@ window.__ModuleLoader__.load({
@@ -271,7 +271,7 @@ index c8e0c23..fb8a79f 100644
              if (ui.el !== null && ui.el.style) {
                ui.el.style.left = p.left + 'px'
                ui.el.style.top = p.top + 'px'
-@@ -1464,6 +1499,174 @@ window.__ModuleLoader__.load({
+@@ -1464,6 +1499,176 @@ window.__ModuleLoader__.load({
          return b
        }
  
@@ -293,12 +293,14 @@ index c8e0c23..fb8a79f 100644
 +      function voiceDebugInfo() {
 +        try {
 +          var keys = []
-+          for (var k in ctx) { if (k.charAt(0) !== '_' && typeof ctx[k] !== 'function') keys.push(k) }
-+          var hasRemote = (ctx.remote !== undefined && ctx.remote !== null)
++          try { for (var k in ctx) { if (k.charAt(0) !== '_' && typeof ctx[k] !== 'function') keys.push(k) } } catch (_) {}
++          var remote = null
++          try { remote = ctx.remote } catch (_) { remote = 'throw' }
++          var hasRemote = (remote !== null && remote !== undefined && remote !== 'throw')
 +          var ns = ''
 +          if (hasRemote) {
 +            var arr = []
-+            for (var r in ctx.remote) { if (r.charAt(0) !== '$') arr.push(r) }
++            try { for (var r in remote) { if (r.charAt(0) !== '$') arr.push(r) } } catch (_) {}
 +            ns = arr.slice(0, 10).join('/')
 +          }
 +          var msg = ' [build=v1.0.18 ctx=' + keys.slice(0, 12).join(',') + ' remote=' + (hasRemote ? 'yes' : 'no') + ' ns=' + ns + ']'
@@ -446,7 +448,7 @@ index c8e0c23..fb8a79f 100644
        function render() {
          host.textContent = ''
          ui.el = null
-@@ -1474,7 +1677,7 @@ window.__ModuleLoader__.load({
+@@ -1474,7 +1679,7 @@ window.__ModuleLoader__.load({
            bar.style.top = ui.pos.top + 'px'
            var already = ui.quotes.some(function (q) { return q.text === ui.quote && (q.sourceUrl || '') === (ui.source && ui.source.sourceUrl || '') })
            bar.appendChild(ghostButton(
@@ -455,7 +457,7 @@ index c8e0c23..fb8a79f 100644
              already ? t('actions.already') : t('actions.annotate'),
              already ? t('actions.alreadyTitle') : t('actions.annotateTitle'),
              already,
-@@ -1482,6 +1685,14 @@ window.__ModuleLoader__.load({
+@@ -1482,6 +1687,14 @@ window.__ModuleLoader__.load({
            ))
            host.appendChild(bar)
            ui.el = bar
@@ -470,7 +472,7 @@ index c8e0c23..fb8a79f 100644
          } else if (ui.mode === 'editing') {
            var card = document.createElement('div')
            card.className = 'dsh-ann-card'
-@@ -1490,12 +1701,12 @@ window.__ModuleLoader__.load({
+@@ -1490,12 +1703,12 @@ window.__ModuleLoader__.load({
            ui.el = card
            var head = document.createElement('div')
            head.className = 'dsh-ann-card-head'
@@ -485,7 +487,7 @@ index c8e0c23..fb8a79f 100644
            headMain.appendChild(title)
            // 编辑已有批注时，标题右侧紧邻一个删除按钮（新增批注没有可删对象）。
            if (ui.editingId !== null) {
-@@ -1513,33 +1724,72 @@ window.__ModuleLoader__.load({
+@@ -1513,33 +1726,72 @@ window.__ModuleLoader__.load({
              headMain.appendChild(del)
            }
            head.appendChild(headMain)
@@ -568,7 +570,7 @@ index c8e0c23..fb8a79f 100644
            if (ui.error !== null) {
              var err = document.createElement('div')
              err.className = 'dsh-ann-error'
-@@ -1556,10 +1806,17 @@ window.__ModuleLoader__.load({
+@@ -1556,10 +1808,17 @@ window.__ModuleLoader__.load({
        }
  
        function positionEditor(card, left, top) {
@@ -590,7 +592,7 @@ index c8e0c23..fb8a79f 100644
          card.style.left = ui.pos.left + 'px'
          card.style.top = ui.pos.top + 'px'
        }
-@@ -1739,8 +1996,8 @@ window.__ModuleLoader__.load({
+@@ -1739,8 +1998,8 @@ window.__ModuleLoader__.load({
            }
            if (anchor === null && rects.length > 0 && rects[0].width > 0) anchor = rects[0]
            if (anchor !== null) {
@@ -601,7 +603,7 @@ index c8e0c23..fb8a79f 100644
              if (chipTop < 4) chipTop = 4
              // #63：编号下限抬到会话列可视区上沿 + 4px——原文起于其下时，把落在
              // 顶栏横带里的编号压回正文区（而不是被裁成半截或整条跳过）；原文
-@@ -1749,7 +2006,7 @@ window.__ModuleLoader__.load({
+@@ -1749,7 +2008,7 @@ window.__ModuleLoader__.load({
              var col = conversationColumnRange()
              var chipFloor = col !== null ? col.top + 4 : 4
              if (col !== null && anchor.top >= chipFloor && chipTop < chipFloor) chipTop = chipFloor
@@ -610,7 +612,7 @@ index c8e0c23..fb8a79f 100644
              // 编号只允许出现在「会话正文实际看得见」的地方：跟正文一样，滚出
              // 内容可视区就消失，绝不贴边钉住（钉住会浮在输入框上/下面的空处）。
              // 两条判据：① 落在正文滚动容器里；② 不与宿主遮挡 UI（会话头部、
-@@ -1759,15 +2016,15 @@ window.__ModuleLoader__.load({
+@@ -1759,15 +2018,15 @@ window.__ModuleLoader__.load({
              var views = hostLocalRects('scrollBody')
              for (var vc = 0; vc < views.length; vc++) {
                var vr = views[vc]
@@ -630,7 +632,7 @@ index c8e0c23..fb8a79f 100644
              }
              if (!skipChip) {
                var chip = document.createElement('div')
-@@ -1778,14 +2035,14 @@ window.__ModuleLoader__.load({
+@@ -1778,14 +2037,14 @@ window.__ModuleLoader__.load({
                  var clash = false
                  for (var p = 0; p < placed.length; p++) {
                    var bp = placed[p]
@@ -648,7 +650,7 @@ index c8e0c23..fb8a79f 100644
                  tries++
                }
                placed.push({ left: chipLeft, top: chipTop })
-@@ -1880,8 +2137,9 @@ window.__ModuleLoader__.load({
+@@ -1880,8 +2139,9 @@ window.__ModuleLoader__.load({
          ui.pendingAnchor = null
          var range = locateQuote(q.text, q)
          var rect = range !== null ? range.getBoundingClientRect() : null
@@ -660,7 +662,7 @@ index c8e0c23..fb8a79f 100644
            : { left: 8, top: 8 }
          render()
        }
-@@ -2050,6 +2308,10 @@ window.__ModuleLoader__.load({
+@@ -2050,6 +2310,10 @@ window.__ModuleLoader__.load({
  
        function closeToolbar() {
          if (ui.mode === 'closed') return
@@ -671,7 +673,7 @@ index c8e0c23..fb8a79f 100644
          clearSettle()
          ui.mode = 'closed'
          ui.error = null
-@@ -2243,7 +2505,7 @@ window.__ModuleLoader__.load({
+@@ -2243,7 +2507,7 @@ window.__ModuleLoader__.load({
            var item = document.createElement('div')
            item.style.cssText = 'padding:6px 0;border-top:1px solid var(--dsw-alias-border-strong,#444);'
            var num = document.createElement('span')
@@ -680,7 +682,7 @@ index c8e0c23..fb8a79f 100644
            num.textContent = String(i + 1)
            var body = document.createElement('span')
            body.style.cssText = 'font-size:11px;line-height:1.5;color:var(--dsw-alias-label-tertiary);'
-@@ -2259,7 +2521,7 @@ window.__ModuleLoader__.load({
+@@ -2259,7 +2523,7 @@ window.__ModuleLoader__.load({
            var del = document.createElement('button')
            del.type = 'button'
            del.textContent = t('tip.del')
@@ -689,7 +691,7 @@ index c8e0c23..fb8a79f 100644
            ;(function (qid) {
              del.addEventListener('click', function (ev) {
                ev.stopPropagation()
-@@ -2478,7 +2740,7 @@ window.__ModuleLoader__.load({
+@@ -2478,7 +2742,7 @@ window.__ModuleLoader__.load({
                var item = document.createElement('div')
                item.style.cssText = 'padding:6px 0;border-top:1px solid var(--dsw-alias-border-strong,#444);'
                var num = document.createElement('span')
@@ -698,3 +700,12 @@ index c8e0c23..fb8a79f 100644
                num.textContent = String(i + 1)
                var body = document.createElement('span')
                body.style.cssText = 'font-size:11px;line-height:1.5;color:var(--dsw-alias-label-tertiary);'
+@@ -2862,7 +3126,7 @@ window.__ModuleLoader__.load({
+     }
+ 
+     exports.name = '@changfenhuang/dsh-annotation'
+-    exports.inject = ['sessions', 'conversation', 'locale', 'uiSession']
++    exports.inject = ['sessions', 'conversation', 'locale', 'uiSession', 'remote']
+     exports.apply = apply
+ 
+     return module.exports

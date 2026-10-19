@@ -26,11 +26,11 @@
 | 仓库 | https://github.com/Niuniu-Sir/dsh-annotation |
 | 修改部分版权 | `Copyright (c) 2026 Niuniu-Sir` |
 | 版本线 | 自 **v1.0.0** 起独立编号，**不跟进上游更新** |
-| 与上游的关系 | v1.0.0–v1.0.18 = 上游 v1.4.11 + 下列 27 项改动 |
+| 与上游的关系 | v1.0.0–v1.0.19 = 上游 v1.4.11 + 下列 28 项改动 |
 
 ## 三、修改清单（完整、可逐行核对）
 
-全部代码差异集中在 **`client.js`**（**347 行新增 / 85 行删除**）；另有 `package.json` 的 `dsh.client.inject` 增加 `@deepseek-ai/dsh-api-remotes`、`@deepseek-ai/dsh-api-gateway` 两项依赖。逐行补丁见
+全部代码差异集中在 **`client.js`**（**350 行新增 / 86 行删除**）；另有 `package.json` 的 `dsh.client.inject` 增加 `@deepseek-ai/dsh-api-remotes`、`@deepseek-ai/dsh-api-gateway` 两项依赖。逐行补丁见
 [`patches/01-toolbar-position-and-label.patch`](./patches/01-toolbar-position-and-label.patch)。
 
 | # | 改动 | 位置 | 原因 |
@@ -62,6 +62,7 @@
 | 25 | 新增批注卡的话筒改为**输入框内部右侧小图标**：`.dsh-ann-input-wrap` 包裹输入框与话筒，话筒绝对定位、输入框右侧留 30px；编辑卡仍用底部按钮行话筒 | `client.js` 新增卡渲染与 `.dsh-ann-input-wrap/.dsh-ann-mic-inline` 样式 | 新增卡上看不到话筒/位置不明显，要求两张卡都能在输入处直接说话 |
 | 26 | 取不到 `remote.speech` 时输出**诊断信息**（ctx 可用服务名、remote 是否存在、namespace 列表），并依次尝试 `ctx.remote`、`ctx.get('remote'/'apiRemotes'/'typertRemote'/'gateway')`；内嵌话筒补可见边框/底色与 z-index | `client.js` `speechService()/voiceDebugInfo()` 与话筒样式 | 主输入框语音正常、插件却提示「宿主语音输入插件未启用」，需定位上下文差异 |
 | 27 | 诊断串加入 **build 版本标记**并写入 `localStorage['dsh-ann-last-voice-error']`，用于确认界面实际加载的客户端版本、便于离线取错误 | `client.js` `voiceDebugInfo()` | 重启后仍报错，需要确认加载版本与上下文事实 |
+| 28 | **修复语音取不到 remote 的根因**：`exports.inject` 增加 `'remote'`（此前只声明 sessions/conversation/locale/uiSession，导致 `ctx.remote` 访问抛错）；诊断函数改为逐段 try，抛错时仍输出 build 与 ctx 服务列表 | `client.js` `exports.inject`、`voiceDebugInfo()` | 红字显示 `[dbg失败]`，证明访问 `ctx.remote` 即抛异常 |
 
 **未改动**：颜色与主题变量、圆角、按钮数量（上游就是单个按钮）、发送格式（协议块）、锚点与滚动逻辑、界面语言体系与协议块。
 

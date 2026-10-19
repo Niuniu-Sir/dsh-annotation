@@ -3,6 +3,18 @@
 > 本仓库**从 v1.0.0 起独立编号，不跟进上游更新**。
 > 上游对应的版本见每条记录；上游自身的历史更新记录完整归档在 [`CHANGELOG.upstream.md`](./CHANGELOG.upstream.md)（未改动）。
 
+## [1.0.19] — 2026-10-19
+
+上游对应仍为 **v1.4.11**（提交 `14111b2`）。
+
+### 修复：语音取不到 remote 的根因
+
+- 之前截图里的红字 `[dbg失败]` 说明：**访问 `ctx.remote` 本身就抛异常**。根因是插件的 cordis 服务声明 `exports.inject` 只写了 `sessions / conversation / locale / uiSession`，**没有 `remote`**，所以 `ctx.remote` 不可用。
+- 现已把 `'remote'` 加入 `exports.inject`；`package.json` 的 `dsh.client.inject` 里的 api-remotes/api-gateway 只负责模块加载顺序，真正让服务进 ctx 的是这一行。
+- 诊断函数也改为逐段 try：即使 `ctx.remote` 抛错，也会显示 build 版本与 ctx 服务列表，不再只剩 `[dbg失败]`。
+
+**未改动**：录音/转写流程、按钮与样式。
+
 ## [1.0.18] — 2026-10-19
 
 上游对应仍为 **v1.4.11**（提交 `14111b2`）。
