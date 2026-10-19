@@ -25,8 +25,8 @@
 //      隐藏手术与反解析同时兼容「提问：」/「Ask:」/「Вопрос:」与「问题：」老格式；
 //      zh/en 之外的未知语言（fr、de…）走英文，绝不退回中文
 //
-// 消息格式（zh）：我批注了以下 N 处内容…\n\n1. 原文\n   批注：…\n\n
-//           请用「Annotation 1：…」…\n\n提问：
+// 消息格式（zh，紧凑版）：批注（N 条）：\n\n1. 原文\n   批注：…\n\n
+//           请按「Annotation N：…」逐条回应。\n\n提问：
 // （en 用 I annotated the following N passage(s)… + Note: … + Ask:；
 //   ru 用 Я аннотировал следующие фрагменты (N шт.)… + Примечание: … + Вопрос:，
 //   但格式指令里的 «Annotation N: …» 三种语言都保留拉丁写法 —— 回复里按它做
@@ -215,11 +215,11 @@ window.__ModuleLoader__.load({
           noSession: '无法确定当前会话，批注未拼入（已保留，将随下一条消息重试）',
         },
         block: {
-          head: '我批注了以下 {n} 处内容（编号与原文对应），请针对它们回答我的问题：',
+          head: '批注（{n} 条）：',
           notePrefix: '批注：',
-          format: '请用「Annotation 1：…」到「Annotation {n}：…」的格式，逐条回应上面每一条批注，最后再回答我的问题。',
-          headOnly: '我批注了以下内容，请逐条回应：',
-          formatOnly: '请按「Annotation N：…」的格式，逐条回应以上批注。',
+          format: '请按「Annotation N：…」逐条回应。',
+          headOnly: '批注（{n} 条）：',
+          formatOnly: '请按「Annotation N：…」逐条回应。',
           marker: '提问：',
         },
       },
@@ -252,11 +252,11 @@ window.__ModuleLoader__.load({
           noSession: 'Cannot determine the current session; annotations kept pending and will retry with your next message',
         },
         block: {
-          head: 'I annotated the following {n} passage(s) (the numbers match the quotes below); please respond to them when answering my question:',
+          head: 'Annotations ({n}):',
           notePrefix: 'Note: ',
-          format: 'Please respond to each annotation in the format "Annotation 1: …" through "Annotation {n}: …", then answer my question.',
-          headOnly: 'I annotated the following passages; please respond to each annotation:',
-          formatOnly: 'Please respond to each annotation above in the format "Annotation N: …".',
+          format: 'Reply to each as "Annotation N: …".',
+          headOnly: 'Annotations ({n}):',
+          formatOnly: 'Reply to each as "Annotation N: …".',
           marker: 'Ask:',
         },
       },
@@ -296,11 +296,11 @@ window.__ModuleLoader__.load({
         // работает замена в ответе ассистента (decorateAnnotationLabels), и он не
         // зависит от языка интерфейса.
         block: {
-          head: 'Я аннотировал следующие фрагменты ({n} шт.) — номера соответствуют цитатам ниже; пожалуйста, ответьте на них, отвечая на мой вопрос:',
+          head: 'Аннотации ({n}):',
           notePrefix: 'Примечание: ',
-          format: 'Ответьте на каждую аннотацию в формате «Annotation 1: …» — «Annotation {n}: …», затем ответьте на мой вопрос.',
-          headOnly: 'Я аннотировал следующие фрагменты — ответьте, пожалуйста, на каждую аннотацию:',
-          formatOnly: 'Ответьте на каждую аннотацию выше в формате «Annotation N: …».',
+          format: 'Ответьте по порядку в формате "Annotation N: …".',
+          headOnly: 'Аннотации ({n}):',
+          formatOnly: 'Ответьте по порядку в формате "Annotation N: …".',
           marker: 'Вопрос:',
         },
       },
@@ -347,10 +347,18 @@ window.__ModuleLoader__.load({
       return forms[index] !== undefined ? forms[index] : forms[0]
     }
     // 批注块头部哨兵（zh/en/ru 都识别；兼容历史消息与跨语言切换）。
-    var BLOCK_HEADS = { zh: '我批注了以下', en: 'I annotated the following', ru: 'Я аннотировал следующие' }
+    var BLOCK_HEADS = {
+      zh: ['批注（', '我批注了以下'],
+      en: ['Annotations (', 'I annotated the following'],
+      ru: ['Аннотации (', 'Я аннотировал следующие'],
+    }
     function hasAnnotationBlock(text) {
       for (var lang in BLOCK_HEADS) {
-        if (Object.prototype.hasOwnProperty.call(BLOCK_HEADS, lang) && text.indexOf(BLOCK_HEADS[lang]) !== -1) return true
+        if (!Object.prototype.hasOwnProperty.call(BLOCK_HEADS, lang)) continue
+        var heads = BLOCK_HEADS[lang]
+        for (var i = 0; i < heads.length; i++) {
+          if (text.indexOf(heads[i]) !== -1) return true
+        }
       }
       return false
     }
@@ -2670,7 +2678,11 @@ window.__ModuleLoader__.load({
           // 纯批注用完整首尾文案识别，避免原文中的「提问：」被误当成正文分隔符。
           // 语言列表取自词典本身：多一种语言（ru）就自动多一条识别路径。
           var annotationOnly = Object.keys(STR).some(function (lang) {
-            return full.indexOf(dictVal(lang, 'block.headOnly')) === 0
+            // headOnly 含 {n} 占位符：按「前缀 + 数字 + 后缀」匹配，兼容任意条数。
+            var parts = dictVal(lang, 'block.headOnly').split('{n}')
+            var esc = parts.map(function (p) { return p.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') })
+            var headRe = new RegExp('^' + esc[0] + (parts.length > 1 ? '\\d+' : '') + (esc[1] || ''))
+            return headRe.test(full)
               && full.trimEnd().endsWith(dictVal(lang, 'block.formatOnly'))
           })
           if (annotationOnly) {

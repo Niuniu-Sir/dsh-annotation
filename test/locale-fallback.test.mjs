@@ -30,14 +30,11 @@ test('zh/en/ru берутся как есть, неизвестный язык �
 
 test('протокол блока переведён целиком, включая разделитель вопроса', () => {
   api.setLang('ru')
-  assert.match(api.t('block.head', { n: 2 }), /^Я аннотировал следующие/)
-  assert.match(api.t('block.headOnly'), /^Я аннотировал следующие/)
+  assert.match(api.t('block.head', { n: 2 }), /^Аннотации \(2\):/)
+  assert.match(api.t('block.headOnly', { n: 2 }), /^Аннотации \(2\):/)
   assert.equal(api.t('block.marker'), 'Вопрос:')
   assert.equal(api.t('block.notePrefix'), 'Примечание: ')
-  assert.equal(
-    api.t('block.format', { n: 2 }),
-    'Ответьте на каждую аннотацию в формате «Annotation 1: …» — «Annotation 2: …», затем ответьте на мой вопрос.',
-  )
+  assert.equal(api.t('block.format', { n: 2 }), 'Ответьте по порядку в формате "Annotation N: …".')
   assert.match(api.t('block.formatOnly'), /Annotation N: /)
   // 未知 ключ не подменяется чужим языком
   assert.equal(api.t('nope.missing'), 'nope.missing')

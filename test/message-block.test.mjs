@@ -42,9 +42,9 @@ function harness(lang, draft, sourcePath, sessionsOverride, storageOverride) {
 
 /** Языковая таблица: разделитель вопроса, инструкция с вопросом, заголовок блока. */
 const LANGS = {
-  zh: { marker: '提问：', withQuestion: /最后再回答我的问题/, head: '我批注了以下 1 处内容', other: 'en' },
-  en: { marker: 'Ask:', withQuestion: /then answer my question/, head: 'I annotated the following 1 passage', other: 'zh' },
-  ru: { marker: 'Вопрос:', withQuestion: /затем ответьте на мой вопрос/, head: 'Я аннотировал следующие', other: 'zh' },
+  zh: { marker: '提问：', withQuestion: /\n提问：\n/, head: '批注（1 条）', other: 'en' },
+  en: { marker: 'Ask:', withQuestion: /\nAsk:\n/, head: 'Annotations (1)', other: 'zh' },
+  ru: { marker: 'Вопрос:', withQuestion: /\nВопрос:\n/, head: 'Аннотации (1)', other: 'zh' },
 }
 
 for (const lang of Object.keys(LANGS)) {
