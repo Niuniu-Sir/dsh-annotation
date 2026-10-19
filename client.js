@@ -25,8 +25,8 @@
 //      隐藏手术与反解析同时兼容「提问：」/「Ask:」/「Вопрос:」与「问题：」老格式；
 //      zh/en 之外的未知语言（fr、de…）走英文，绝不退回中文
 //
-// 消息格式（zh，紧凑版）：批注（N 条）：\n\n1. 原文\n   批注：…\n\n
-//           请按「Annotation N：…」逐条回应。\n\n提问：
+// 消息格式（zh，极简版）：批注 N 条（按 Annotation N 回复）：\n\n
+//           1. 原文\n   批注：…\n\n提问：
 // （en 用 I annotated the following N passage(s)… + Note: … + Ask:；
 //   ru 用 Я аннотировал следующие фрагменты (N шт.)… + Примечание: … + Вопрос:，
 //   但格式指令里的 «Annotation N: …» 三种语言都保留拉丁写法 —— 回复里按它做
@@ -215,11 +215,11 @@ window.__ModuleLoader__.load({
           noSession: '无法确定当前会话，批注未拼入（已保留，将随下一条消息重试）',
         },
         block: {
-          head: '批注（{n} 条）：',
+          head: '批注 {n} 条（按 Annotation N 回复）：',
           notePrefix: '批注：',
-          format: '请按「Annotation N：…」逐条回应。',
-          headOnly: '批注（{n} 条）：',
-          formatOnly: '请按「Annotation N：…」逐条回应。',
+          format: '',
+          headOnly: '批注 {n} 条（按 Annotation N 回复）：',
+          formatOnly: '',
           marker: '提问：',
         },
       },
@@ -252,11 +252,11 @@ window.__ModuleLoader__.load({
           noSession: 'Cannot determine the current session; annotations kept pending and will retry with your next message',
         },
         block: {
-          head: 'Annotations ({n}):',
+          head: 'Annotations ({n}) — reply as "Annotation N: …":',
           notePrefix: 'Note: ',
-          format: 'Reply to each as "Annotation N: …".',
-          headOnly: 'Annotations ({n}):',
-          formatOnly: 'Reply to each as "Annotation N: …".',
+          format: '',
+          headOnly: 'Annotations ({n}) — reply as "Annotation N: …":',
+          formatOnly: '',
           marker: 'Ask:',
         },
       },
@@ -296,11 +296,11 @@ window.__ModuleLoader__.load({
         // работает замена в ответе ассистента (decorateAnnotationLabels), и он не
         // зависит от языка интерфейса.
         block: {
-          head: 'Аннотации ({n}):',
+          head: 'Аннотации ({n}) — формат "Annotation N: …":',
           notePrefix: 'Примечание: ',
-          format: 'Ответьте по порядку в формате "Annotation N: …".',
-          headOnly: 'Аннотации ({n}):',
-          formatOnly: 'Ответьте по порядку в формате "Annotation N: …".',
+          format: '',
+          headOnly: 'Аннотации ({n}) — формат "Annotation N: …":',
+          formatOnly: '',
           marker: 'Вопрос:',
         },
       },
@@ -348,9 +348,9 @@ window.__ModuleLoader__.load({
     }
     // 批注块头部哨兵（zh/en/ru 都识别；兼容历史消息与跨语言切换）。
     var BLOCK_HEADS = {
-      zh: ['批注（', '我批注了以下'],
-      en: ['Annotations (', 'I annotated the following'],
-      ru: ['Аннотации (', 'Я аннотировал следующие'],
+      zh: ['（按 Annotation N 回复）', '我批注了以下'],
+      en: ['— reply as "Annotation N', 'I annotated the following'],
+      ru: ['— формат "Annotation N', 'Я аннотировал следующие'],
     }
     function hasAnnotationBlock(text) {
       for (var lang in BLOCK_HEADS) {
@@ -2182,9 +2182,10 @@ window.__ModuleLoader__.load({
           }
           return s
         })
+        var fmt = t(hasQuestion ? 'block.format' : 'block.formatOnly')
         return t(hasQuestion ? 'block.head' : 'block.headOnly', { n: n }) + '\n\n'
           + parts.join('\n\n')
-          + '\n\n' + t(hasQuestion ? 'block.format' : 'block.formatOnly', { n: n })
+          + (fmt !== '' ? '\n\n' + fmt : '')
           + (hasQuestion ? '\n\n' + t('block.marker') : '')
       }
 
@@ -2677,14 +2678,26 @@ window.__ModuleLoader__.load({
           }
           // 纯批注用完整首尾文案识别，避免原文中的「提问：」被误当成正文分隔符。
           // 语言列表取自词典本身：多一种语言（ru）就自动多一条识别路径。
+          // 纯批注块：标题匹配（新格式含 {n}，按「前缀+数字+后缀」生成正则）且
+          // 消息里没有独立的「提问/问题/Ask/Вопрос」行；带提问的块交给下面的分隔符路径。
+          var legacyHeads = [
+            '我批注了以下内容，请逐条回应：',
+            'I annotated the following passages; please respond to each annotation:',
+            'Я аннотировал следующие фрагменты — ответьте, пожалуйста, на каждую аннотацию:',
+            '批注（',
+          ]
+          var fullLines = full.split('\n')
+          var markersNow = blockMarkers()
+          var hasMarkerLine = markersNow.some(function (m) { return fullLines.indexOf(m) !== -1 })
           var annotationOnly = Object.keys(STR).some(function (lang) {
-            // headOnly 含 {n} 占位符：按「前缀 + 数字 + 后缀」匹配，兼容任意条数。
             var parts = dictVal(lang, 'block.headOnly').split('{n}')
             var esc = parts.map(function (p) { return p.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') })
             var headRe = new RegExp('^' + esc[0] + (parts.length > 1 ? '\\d+' : '') + (esc[1] || ''))
-            return headRe.test(full)
-              && full.trimEnd().endsWith(dictVal(lang, 'block.formatOnly'))
-          })
+            var headOk = headRe.test(full)
+              || legacyHeads.some(function (h) { return full.indexOf(h) === 0 })
+            return headOk
+          }) && !hasMarkerLine
+            && fullLines.some(function (l) { return /^\d+\.\s/.test(l) })
           if (annotationOnly) {
             nodes.forEach(function (node) { node.nodeValue = '' })
             return true
