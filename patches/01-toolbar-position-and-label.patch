@@ -1,5 +1,5 @@
 diff --git a/client.js b/client.js
-index c8e0c23..0babb58 100644
+index c8e0c23..4feb179 100644
 --- a/client.js
 +++ b/client.js
 @@ -60,65 +60,75 @@ window.__ModuleLoader__.load({
@@ -275,21 +275,21 @@ index c8e0c23..0babb58 100644
            headMain.appendChild(title)
            // 编辑已有批注时，标题右侧紧邻一个删除按钮（新增批注没有可删对象）。
            if (ui.editingId !== null) {
-@@ -1513,33 +1538,68 @@ window.__ModuleLoader__.load({
+@@ -1513,33 +1538,65 @@ window.__ModuleLoader__.load({
              headMain.appendChild(del)
            }
            head.appendChild(headMain)
 -          head.appendChild(iconButton('dsh-ann-icon', ICONS.close, t('common.cancel'), closeToolbar))
 -          card.appendChild(head)
 -          var quote = document.createElement('div')
+-          quote.className = 'dsh-ann-quote'
+-          quote.textContent = truncate(quoteWithSource({ text: ui.quote, sourcePath: ui.source && ui.source.sourcePath }), 200)
+-          quote.title = quoteWithSource({ text: ui.quote, sourcePath: ui.source && ui.source.sourcePath })
+-          card.appendChild(quote)
 +          if (ui.editingId !== null) { head.appendChild(iconButton('dsh-ann-icon', ICONS.close, t('common.cancel'), closeToolbar)) }
 +          if (ui.editingId !== null) { card.appendChild(head) }
-+          if (ui.editingId !== null) { var quote = document.createElement('div')
-           quote.className = 'dsh-ann-quote'
-           quote.textContent = truncate(quoteWithSource({ text: ui.quote, sourcePath: ui.source && ui.source.sourcePath }), 200)
-           quote.title = quoteWithSource({ text: ui.quote, sourcePath: ui.source && ui.source.sourcePath })
--          card.appendChild(quote)
-+          card.appendChild(quote) }
++          // 编辑卡不再重复显示被批注原文：页面上已有高亮与编号标注位置，
++          // 原文预览属于重复信息；提交时协议块仍携带原文，模型据此定位。
            var ta = document.createElement('textarea')
            ta.className = 'dsh-ann-input'
 -          ta.placeholder = t('edit.placeholder')
@@ -351,7 +351,7 @@ index c8e0c23..0babb58 100644
            if (ui.error !== null) {
              var err = document.createElement('div')
              err.className = 'dsh-ann-error'
-@@ -1556,10 +1616,17 @@ window.__ModuleLoader__.load({
+@@ -1556,10 +1613,17 @@ window.__ModuleLoader__.load({
        }
  
        function positionEditor(card, left, top) {
@@ -373,7 +373,7 @@ index c8e0c23..0babb58 100644
          card.style.left = ui.pos.left + 'px'
          card.style.top = ui.pos.top + 'px'
        }
-@@ -1739,8 +1806,8 @@ window.__ModuleLoader__.load({
+@@ -1739,8 +1803,8 @@ window.__ModuleLoader__.load({
            }
            if (anchor === null && rects.length > 0 && rects[0].width > 0) anchor = rects[0]
            if (anchor !== null) {
@@ -384,7 +384,7 @@ index c8e0c23..0babb58 100644
              if (chipTop < 4) chipTop = 4
              // #63：编号下限抬到会话列可视区上沿 + 4px——原文起于其下时，把落在
              // 顶栏横带里的编号压回正文区（而不是被裁成半截或整条跳过）；原文
-@@ -1749,7 +1816,7 @@ window.__ModuleLoader__.load({
+@@ -1749,7 +1813,7 @@ window.__ModuleLoader__.load({
              var col = conversationColumnRange()
              var chipFloor = col !== null ? col.top + 4 : 4
              if (col !== null && anchor.top >= chipFloor && chipTop < chipFloor) chipTop = chipFloor
@@ -393,7 +393,7 @@ index c8e0c23..0babb58 100644
              // 编号只允许出现在「会话正文实际看得见」的地方：跟正文一样，滚出
              // 内容可视区就消失，绝不贴边钉住（钉住会浮在输入框上/下面的空处）。
              // 两条判据：① 落在正文滚动容器里；② 不与宿主遮挡 UI（会话头部、
-@@ -1759,15 +1826,15 @@ window.__ModuleLoader__.load({
+@@ -1759,15 +1823,15 @@ window.__ModuleLoader__.load({
              var views = hostLocalRects('scrollBody')
              for (var vc = 0; vc < views.length; vc++) {
                var vr = views[vc]
@@ -413,7 +413,7 @@ index c8e0c23..0babb58 100644
              }
              if (!skipChip) {
                var chip = document.createElement('div')
-@@ -1778,14 +1845,14 @@ window.__ModuleLoader__.load({
+@@ -1778,14 +1842,14 @@ window.__ModuleLoader__.load({
                  var clash = false
                  for (var p = 0; p < placed.length; p++) {
                    var bp = placed[p]
@@ -431,7 +431,7 @@ index c8e0c23..0babb58 100644
                  tries++
                }
                placed.push({ left: chipLeft, top: chipTop })
-@@ -1880,8 +1947,9 @@ window.__ModuleLoader__.load({
+@@ -1880,8 +1944,9 @@ window.__ModuleLoader__.load({
          ui.pendingAnchor = null
          var range = locateQuote(q.text, q)
          var rect = range !== null ? range.getBoundingClientRect() : null
@@ -443,7 +443,7 @@ index c8e0c23..0babb58 100644
            : { left: 8, top: 8 }
          render()
        }
-@@ -2243,7 +2311,7 @@ window.__ModuleLoader__.load({
+@@ -2243,7 +2308,7 @@ window.__ModuleLoader__.load({
            var item = document.createElement('div')
            item.style.cssText = 'padding:6px 0;border-top:1px solid var(--dsw-alias-border-strong,#444);'
            var num = document.createElement('span')
@@ -452,7 +452,7 @@ index c8e0c23..0babb58 100644
            num.textContent = String(i + 1)
            var body = document.createElement('span')
            body.style.cssText = 'font-size:11px;line-height:1.5;color:var(--dsw-alias-label-tertiary);'
-@@ -2259,7 +2327,7 @@ window.__ModuleLoader__.load({
+@@ -2259,7 +2324,7 @@ window.__ModuleLoader__.load({
            var del = document.createElement('button')
            del.type = 'button'
            del.textContent = t('tip.del')
@@ -461,7 +461,7 @@ index c8e0c23..0babb58 100644
            ;(function (qid) {
              del.addEventListener('click', function (ev) {
                ev.stopPropagation()
-@@ -2478,7 +2546,7 @@ window.__ModuleLoader__.load({
+@@ -2478,7 +2543,7 @@ window.__ModuleLoader__.load({
                var item = document.createElement('div')
                item.style.cssText = 'padding:6px 0;border-top:1px solid var(--dsw-alias-border-strong,#444);'
                var num = document.createElement('span')

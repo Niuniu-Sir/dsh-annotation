@@ -1540,11 +1540,8 @@ window.__ModuleLoader__.load({
           head.appendChild(headMain)
           if (ui.editingId !== null) { head.appendChild(iconButton('dsh-ann-icon', ICONS.close, t('common.cancel'), closeToolbar)) }
           if (ui.editingId !== null) { card.appendChild(head) }
-          if (ui.editingId !== null) { var quote = document.createElement('div')
-          quote.className = 'dsh-ann-quote'
-          quote.textContent = truncate(quoteWithSource({ text: ui.quote, sourcePath: ui.source && ui.source.sourcePath }), 200)
-          quote.title = quoteWithSource({ text: ui.quote, sourcePath: ui.source && ui.source.sourcePath })
-          card.appendChild(quote) }
+          // 编辑卡不再重复显示被批注原文：页面上已有高亮与编号标注位置，
+          // 原文预览属于重复信息；提交时协议块仍携带原文，模型据此定位。
           var ta = document.createElement('textarea')
           ta.className = 'dsh-ann-input'
           ta.placeholder = ui.editingId === null ? '添加批注…' : t('edit.placeholder')
