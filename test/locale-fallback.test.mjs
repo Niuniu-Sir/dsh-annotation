@@ -15,7 +15,7 @@ const api = Function(`${i18n}
 
 test('zh/en/ru берутся как есть, неизвестный язык — английский', () => {
   api.setLang('zh')
-  assert.equal(api.t('actions.annotate'), '批注')
+  assert.equal(api.t('actions.annotate'), '添加到对话')
   api.setLang('en')
   assert.equal(api.t('actions.annotate'), 'Annotate')
   api.setLang('ru')

@@ -875,9 +875,8 @@ window.__ModuleLoader__.load({
       var w = (typeof wOpt === 'number') ? wOpt : 400
       var left = w > 0 ? rect.left + rect.width / 2 - w / 2 : rect.left
       left = Math.max(8, Math.min(left, window.innerWidth - w - 8))
-      // 下方优先：原生选中菜单（移动端长按菜单、桌面 Copy/Search 浮层）锚定在选区
-      // 上沿附近，且原生 UI 恒绘制在页面内容之上（z-index 无效），工具条放上方必被
-      // 遮挡；因此下方放得下就放下方，放不下才回上方。
+      // 上方优先（本仓库改版）：工具条底边贴选区上沿；上方放不下时才落到选区下方。
+      // 上游原本「下方优先」以避开系统原生选中菜单，但实测下方更易遮挡且观感松散。
       var belowTop = rect.bottom + gap
       var belowFits = false
       var top

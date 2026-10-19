@@ -33,12 +33,15 @@ test('滚动和布局变化会刷新输入框批注胶囊（issue #44）', () =>
   assert.match(source, /composerObserver\.disconnect\(\)/)
 })
 
-test('工具条优先选区下方，底部空间不足时放在上方（PR #48）', () => {
-  const match = source.match(/function placeAbove\(rect, height\) \{[\s\S]*?\n    \}/)
-  assert.ok(match)
+test('工具条优先选区上方，上方空间不足时放在下方（本仓库改版行为）', () => {
+  const match = source.match(/function placeAbove\(rect, height, wOpt, gapOpt\) \{[\s\S]*?\n    \}/)
+  assert.ok(match, 'placeAbove 应保持 (rect, height, wOpt, gapOpt) 签名')
   const place = Function('window', `return (${match[0]})`)({ innerWidth: 1000, innerHeight: 800 })
-  assert.equal(place({ left: 200, width: 300, top: 300, bottom: 320 }, 40).top, 328)
+  // 上方放得下：工具条底边贴选区上沿，默认留 8px
+  assert.equal(place({ left: 200, width: 300, top: 300, bottom: 320 }, 40).top, 252)
+  // 上方空间不足：落到选区下方
   assert.equal(place({ left: 200, width: 300, top: 750, bottom: 770 }, 40).top, 702)
+  // 水平越界时仍留在视口内
   assert.ok(place({ left: -100, width: 300, top: 0, bottom: 800 }, 40).top >= 8)
 })
 
