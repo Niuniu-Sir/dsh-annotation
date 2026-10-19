@@ -2,7 +2,7 @@
   "name": "@changfenhuang/dsh-annotation",
   "version": "1.0.26",
   "type": "module",
-  "description": "dsh-annotation-zh — DSH Web 选中批注插件的自用改版（基于上游 omdsh-dev/dsh-annotation v1.4.11, MIT）。Self-maintained modified version of the DSH Web selection-annotation plugin: select assistant text, annotate (optional), press Enter to send the annotation block with your message. Not affiliated with the original author.",
+  "description": "dsh-annotation-zh — DSH Web 选中批注插件的自用改版（基于上游 omdsh-dev/dsh-annotation v1.4.11, MIT）：选中文字批注、方正编号、主题自适应，并为批注输入框接入宿主语音识别（说完直接保存即转写）。Self-maintained modified version of the DSH Web selection-annotation plugin with per-annotation voice input, compact prompt block and theme-aware styling. Not affiliated with the original author.",
   "author": "omdsh-dev (original work, MIT) · Niuniu-Sir (modifications)",
   "main": "lib/index.js",
   "types": "lib/types/index.d.ts",
